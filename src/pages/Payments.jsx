@@ -9,61 +9,72 @@ export default function Payments() {
   const [payments, setPayments] = useState([]);
   const [members, setMembers] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newPayment, setNewPayment] = useState({ memberId: '', amount: '', method: 'Cash', plan_type: 'Standard' });
+  const [newPayment, setNewPayment] = useState({ memberId: '', amount: '', method: 'Cash' });
 
   useEffect(() => {
     if (!currentUser) return;
-    
-    // Fetch payments
+
     const paymentsRef = collection(db, 'gyms', currentUser.uid, 'payments');
     const unsubscribePayments = onSnapshot(paymentsRef, (snapshot) => {
       const list = [];
-      snapshot.forEach(doc => {
-        list.push({ id: doc.id, ...doc.data() });
+      snapshot.forEach((paymentDoc) => {
+        list.push({ id: paymentDoc.id, ...paymentDoc.data() });
       });
-      list.sort((a,b) => new Date(b.date) - new Date(a.date));
+      list.sort((a, b) => new Date(b.date) - new Date(a.date));
       setPayments(list);
     });
 
-    // Fetch members for dropdown
     const membersRef = collection(db, 'gyms', currentUser.uid, 'members');
     const unsubscribeMembers = onSnapshot(membersRef, (snapshot) => {
       const mList = [];
-      snapshot.forEach(doc => mList.push({ id: doc.id, name: doc.data().name, expiry_date: doc.data().expiry_date }));
+      snapshot.forEach((memberDoc) => {
+        const data = memberDoc.data();
+        mList.push({
+          id: memberDoc.id,
+          name: data.name,
+          expiry_date: data.expiry_date,
+          planType: data.planType || data.plan || 'Monthly',
+          planDuration: Number(data.planDuration || 30),
+          planPrice: data.planPrice || ''
+        });
+      });
       setMembers(mList);
     });
 
-    return () => { unsubscribePayments(); unsubscribeMembers(); }
+    return () => {
+      unsubscribePayments();
+      unsubscribeMembers();
+    };
   }, [currentUser]);
+
+  const selectedMember = members.find((member) => member.id === newPayment.memberId);
 
   const handleAddPayment = async (e) => {
     e.preventDefault();
     try {
-      const member = members.find(m => m.id === newPayment.memberId);
+      const member = members.find((m) => m.id === newPayment.memberId);
       if (!member) return;
 
-      // 1. Log Payment
       await addDoc(collection(db, 'gyms', currentUser.uid, 'payments'), {
         memberId: member.id,
         member_name: member.name,
         amount: Number(newPayment.amount),
         method: newPayment.method,
-        plan_type: newPayment.plan_type,
+        plan_type: member.planType,
         date: new Date().toISOString()
       });
 
-      // 2. Extend Expiry (+30 days logic)
       let currentExp = new Date(member.expiry_date);
       const now = new Date();
-      if (currentExp < now) currentExp = now; // If expired, start from today
-      currentExp.setDate(currentExp.getDate() + 30);
-      
+      if (currentExp < now) currentExp = now;
+      currentExp.setDate(currentExp.getDate() + Number(member.planDuration || 30));
+
       await updateDoc(doc(db, 'gyms', currentUser.uid, 'members', member.id), {
         expiry_date: currentExp.toISOString().split('T')[0]
       });
 
       setShowAddModal(false);
-      setNewPayment({ memberId: '', amount: '', method: 'Cash', plan_type: 'Standard' });
+      setNewPayment({ memberId: '', amount: '', method: 'Cash' });
     } catch (err) {
       console.error(err);
     }
@@ -76,11 +87,12 @@ export default function Payments() {
           <h1 className="text-4xl font-black headline-font uppercase italic tracking-tighter text-white">Payments</h1>
           <p className="text-zinc-500 font-medium text-sm mt-1">Record incoming revenues</p>
         </div>
-        <motion.button 
+        <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setShowAddModal(true)}
-          className="bg-primary hover:bg-primary-dim text-on-primary px-6 py-3 rounded-xl font-bold shadow-[0_0_15px_rgba(253,139,0,0.3)] transition-colors flex items-center gap-2">
+          className="bg-primary hover:bg-primary-dim text-on-primary px-6 py-3 rounded-xl font-bold shadow-[0_0_15px_rgba(253,139,0,0.3)] transition-colors flex items-center gap-2"
+        >
           <span className="material-symbols-outlined text-sm">add</span> Receive Payment
         </motion.button>
       </div>
@@ -102,19 +114,20 @@ export default function Payments() {
                 <tr><td colSpan="5" className="py-12 text-center text-zinc-500 font-medium">No payments found.</td></tr>
               ) : (
                 <AnimatePresence>
-                  {payments.map(p => (
-                    <motion.tr 
+                  {payments.map((p) => (
+                    <motion.tr
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      key={p.id} 
-                      className="hover:bg-zinc-800/30 transition-colors">
+                      key={p.id}
+                      className="hover:bg-zinc-800/30 transition-colors"
+                    >
                       <td className="py-4 px-6 text-sm font-medium text-zinc-400">{new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                       <td className="py-4 px-6 font-bold text-white">{p.member_name}</td>
                       <td className="py-4 px-6 text-xs font-bold text-zinc-400"><span className="border border-white/10 px-2 py-1 rounded bg-black/20">{p.plan_type}</span></td>
                       <td className="py-4 px-6 text-center">
                         <span className="bg-tertiary/10 border border-tertiary/20 text-tertiary px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-widest">{p.method}</span>
                       </td>
-                      <td className="py-4 px-6 text-sm font-black text-primary text-right">+₹{p.amount.toFixed(2)}</td>
+                      <td className="py-4 px-6 text-sm font-black text-primary text-right">+Rs {p.amount.toFixed(2)}</td>
                     </motion.tr>
                   ))}
                 </AnimatePresence>
@@ -126,33 +139,51 @@ export default function Payments() {
 
       <AnimatePresence>
         {showAddModal && (
-          <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
-              className="bg-surface-container-highest p-8 rounded-2xl w-full max-w-md border border-white/5 shadow-2xl relative overflow-hidden">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-surface-container-highest p-8 rounded-2xl w-full max-w-md border border-white/5 shadow-2xl relative overflow-hidden"
+            >
               <div className="absolute top-0 right-0 p-3">
                 <button onClick={() => setShowAddModal(false)} className="text-zinc-500 hover:text-white"><span className="material-symbols-outlined">close</span></button>
               </div>
 
               <h2 className="text-2xl font-black headline-font italic mb-6 text-white uppercase">Record Payment</h2>
-              
+
               <form onSubmit={handleAddPayment} className="space-y-5">
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Select Member</label>
-                  <select required value={newPayment.memberId} onChange={e => setNewPayment({...newPayment, memberId: e.target.value})} className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all">
+                  <select required value={newPayment.memberId} onChange={(e) => setNewPayment({ ...newPayment, memberId: e.target.value })} className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all">
                     <option value="" disabled>Choose a member...</option>
-                    {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Amount Given (₹)</label>
-                  <input type="number" required value={newPayment.amount} onChange={e => setNewPayment({...newPayment, amount: e.target.value})} className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all" />
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Amount Given (Rs)</label>
+                  <input type="number" required value={newPayment.amount} onChange={(e) => setNewPayment({ ...newPayment, amount: e.target.value })} className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all" />
                 </div>
+                {selectedMember && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="rounded-lg border border-white/5 bg-zinc-950/60 px-4 py-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Plan</p>
+                      <p className="mt-1 text-sm font-bold text-white">{selectedMember.planType}</p>
+                    </div>
+                    <div className="rounded-lg border border-white/5 bg-zinc-950/60 px-4 py-3">
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Renewal Period</p>
+                      <p className="mt-1 text-sm font-bold text-white">{selectedMember.planDuration} days</p>
+                    </div>
+                  </div>
+                )}
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Payment Method</label>
-                  <select value={newPayment.method} onChange={e => setNewPayment({...newPayment, method: e.target.value})} className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all">
+                  <select value={newPayment.method} onChange={(e) => setNewPayment({ ...newPayment, method: e.target.value })} className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all">
                     <option>Cash</option>
                     <option>UPI</option>
                     <option>Card</option>

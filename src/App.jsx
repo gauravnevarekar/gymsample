@@ -6,6 +6,8 @@ import Login from './pages/Login';
 import Members from './pages/Members';
 import Payments from './pages/Payments';
 import Expenses from './pages/Expenses';
+import Settings from './pages/Settings';
+import Notifications from './pages/Notifications';
 
 export default function App() {
   const { currentUser } = useAuth();
@@ -18,7 +20,8 @@ export default function App() {
         <Route path="members" element={<Members />} />
         <Route path="payments" element={<Payments />} />
         <Route path="expenses" element={<Expenses />} />
-        <Route path="settings" element={<div className="text-white">Settings component coming soon...</div>} />
+        <Route path="notifications" element={<Notifications />} />
+        <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>
   );

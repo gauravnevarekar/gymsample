@@ -1,12 +1,17 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import clsx from 'clsx';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 export default function Layout() {
-  const { logout } = useAuth();
+  const { currentUser, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [memberSearch, setMemberSearch] = useState('');
 
   async function handleLogout() {
     try {
@@ -16,6 +21,33 @@ export default function Layout() {
     }
   }
 
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const membersRef = collection(db, 'gyms', currentUser.uid, 'members');
+    const unsubscribe = onSnapshot(membersRef, (snapshot) => {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+
+      let count = 0;
+      snapshot.forEach((memberDoc) => {
+        const data = memberDoc.data();
+        const expiryDate = new Date(data.expiry_date);
+        expiryDate.setHours(0, 0, 0, 0);
+
+        const diffTime = expiryDate.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays <= 3) {
+          count += 1;
+        }
+      });
+
+      setNotificationCount(count);
+    });
+
+    return unsubscribe;
+  }, [currentUser]);
+
   const navLinks = [
     { name: 'Dashboard', path: '/', icon: 'dashboard' },
     { name: 'Members', path: '/members', icon: 'group' },
@@ -23,6 +55,15 @@ export default function Layout() {
     { name: 'Expenses', path: '/expenses', icon: 'receipt_long' },
     { name: 'Settings', path: '/settings', icon: 'settings' },
   ];
+
+  function handleSearchChange(e) {
+    const value = e.target.value;
+    setMemberSearch(value);
+
+    if (location.pathname !== '/members') {
+      navigate('/members');
+    }
+  }
 
   return (
     <div className="bg-surface text-on-surface selection:bg-primary selection:text-on-primary min-h-screen">
@@ -53,10 +94,6 @@ export default function Layout() {
             ))}
           </nav>
           <div className="px-6 mt-auto flex flex-col gap-2">
-            <button className="w-full py-4 bg-primary text-on-primary rounded-full font-bold flex items-center justify-center gap-2 shadow-lg hover:brightness-110 active:scale-95 transition-all">
-              <span className="material-symbols-outlined">add</span>
-              Add Member
-            </button>
             <button onClick={handleLogout} className="text-zinc-500 hover:text-white transition-colors text-sm mt-4">
               Logout
             </button>
@@ -71,14 +108,30 @@ export default function Layout() {
             <span className="md:hidden font-['Lexend'] text-2xl font-black italic tracking-tighter text-orange-500">KINETIC</span>
             <div className="relative hidden sm:block">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">search</span>
-              <input className="bg-zinc-900 border-none rounded-full pl-10 pr-4 py-2 text-sm w-64 focus:ring-1 focus:ring-orange-500 transition-all text-white" placeholder="Search members..." type="text" />
+              <input
+                value={memberSearch}
+                onChange={handleSearchChange}
+                className="bg-zinc-900 border-none rounded-full pl-10 pr-4 py-2 text-sm w-64 focus:ring-1 focus:ring-orange-500 transition-all text-white"
+                placeholder="Search members..."
+                type="text"
+              />
             </div>
           </div>
           <div className="flex items-center gap-6">
-            <button className="relative text-zinc-400 hover:text-orange-500 transition-colors">
+            <Link
+              to="/notifications"
+              className={clsx(
+                "relative transition-colors",
+                location.pathname === '/notifications' ? "text-orange-500" : "text-zinc-400 hover:text-orange-500"
+              )}
+            >
               <span className="material-symbols-outlined">notifications</span>
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full"></span>
-            </button>
+              {notificationCount > 0 && (
+                <span className="absolute -top-2 -right-2 min-w-5 h-5 px-1 rounded-full bg-orange-500 text-zinc-950 text-[10px] font-black flex items-center justify-center">
+                  {notificationCount > 9 ? '9+' : notificationCount}
+                </span>
+              )}
+            </Link>
             <div className="flex items-center gap-3 pl-6 border-l border-zinc-800">
               <div className="text-right hidden sm:block">
                 <p className="text-xs font-bold text-on-surface">Gym Admin</p>
@@ -93,7 +146,7 @@ export default function Layout() {
 
       {/* Main Content Canvas */}
       <main className="md:ml-72 pt-24 pb-20 px-6 lg:px-10 min-h-screen">
-        <Outlet />
+        <Outlet context={{ memberSearch, setMemberSearch }} />
       </main>
 
       {/* Bottom Navigation for Mobile */}
