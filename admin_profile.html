@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kinetic Precision | Admin Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600;700;800;900&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-error-container": "#ffd2c8",
+                      "surface-tint": "#ff9f4a",
+                      "on-error": "#450900",
+                      "error-dim": "#d53d18",
+                      "background": "#0e0e0f",
+                      "surface-bright": "#2c2c2d",
+                      "on-tertiary": "#665100",
+                      "primary-container": "#fd8b00",
+                      "on-tertiary-fixed": "#453600",
+                      "primary-fixed": "#fd8b00",
+                      "error-container": "#b92902",
+                      "secondary": "#ffa52a",
+                      "primary-dim": "#ed8200",
+                      "secondary-container": "#875200",
+                      "on-primary-fixed-variant": "#512800",
+                      "inverse-primary": "#914d00",
+                      "secondary-fixed": "#ffc78a",
+                      "on-secondary-fixed": "#4d2d00",
+                      "tertiary": "#ffe393",
+                      "tertiary-dim": "#efc52b",
+                      "surface-container-high": "#1f1f21",
+                      "surface-container-lowest": "#000000",
+                      "secondary-dim": "#ef981a",
+                      "tertiary-container": "#ffd33a",
+                      "tertiary-fixed-dim": "#efc52b",
+                      "outline-variant": "#484849",
+                      "tertiary-fixed": "#ffd33a",
+                      "on-surface": "#ffffff",
+                      "inverse-on-surface": "#555556",
+                      "error": "#ff7351",
+                      "on-primary-fixed": "#180800",
+                      "surface-container": "#19191b",
+                      "surface-dim": "#0e0e0f",
+                      "surface-container-highest": "#262627",
+                      "on-surface-variant": "#acaaab",
+                      "inverse-surface": "#fcf8f9",
+                      "surface": "#0e0e0f",
+                      "primary-fixed-dim": "#ea8000",
+                      "on-background": "#ffffff",
+                      "on-secondary-container": "#fff6f0",
+                      "on-secondary-fixed-variant": "#744600",
+                      "on-secondary": "#512f00",
+                      "on-primary-container": "#442100",
+                      "on-tertiary-container": "#5c4900",
+                      "outline": "#767576",
+                      "surface-variant": "#262627",
+                      "on-tertiary-fixed-variant": "#675200",
+                      "secondary-fixed-dim": "#ffb55c",
+                      "primary": "#ff9f4a",
+                      "surface-container-low": "#131314",
+                      "on-primary": "#532a00"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "fontFamily": {
+                      "headline": ["Lexend"],
+                      "body": ["Inter"],
+                      "label": ["Inter"]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, .font-lexend { font-family: 'Lexend', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .kinetic-gradient {
+            background: linear-gradient(135deg, #ff9f4a 0%, #fd8b00 100%);
+        }
+        .ghost-border {
+            border: 1px solid rgba(72, 72, 73, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-screen w-64 bg-zinc-950 flex flex-col py-8 z-50">
+<div class="px-6 mb-12">
+<div class="flex items-center gap-3 mb-8">
+<div class="w-10 h-10 rounded-full kinetic-gradient flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">fitness_center</span>
+</div>
+<div>
+<h1 class="text-xl font-extrabold text-white tracking-tight leading-none">KINETIC PRECISION</h1>
+<p class="font-['Lexend'] uppercase tracking-widest text-[10px] text-zinc-500 mt-1">Elite Management</p>
+</div>
+</div>
+<nav class="space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 font-['Lexend'] uppercase tracking-widest text-xs text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-all duration-300 active:translate-x-1" href="index.html">
+<span class="material-symbols-outlined text-lg">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 font-['Lexend'] uppercase tracking-widest text-xs text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-all duration-300 active:translate-x-1" href="#">
+<span class="material-symbols-outlined text-lg">fitness_center</span>
+<span>Gym Details</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 font-['Lexend'] uppercase tracking-widest text-xs text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-all duration-300 active:translate-x-1" href="member_directory.html">
+<span class="material-symbols-outlined text-lg">group</span>
+<span>Members</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 font-['Lexend'] uppercase tracking-widest text-xs text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-all duration-300 active:translate-x-1" href="#">
+<span class="material-symbols-outlined text-lg">badge</span>
+<span>Staff</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 font-['Lexend'] uppercase tracking-widest text-xs text-orange-500 border-r-4 border-orange-500 bg-zinc-900/50 transition-all duration-300 active:translate-x-1" href="admin_profile.html">
+<span class="material-symbols-outlined text-lg">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+</div>
+<div class="mt-auto px-6">
+<button class="w-full kinetic-gradient text-on-primary font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-[0_10px_20px_rgba(253,139,0,0.2)] active:scale-95 transition-transform">
+<span class="material-symbols-outlined">add</span>
+<span class="font-['Lexend'] uppercase tracking-widest text-xs">Add New Workout</span>
+</button>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-40 bg-zinc-950/70 backdrop-blur-xl flex justify-between items-center h-16 px-6 ml-64 max-w-[calc(100%-16rem)] shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-zinc-400">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm text-zinc-300 w-64 font-body" placeholder="Search system commands..." type="text"/>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4">
+<button class="text-zinc-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-orange-500 font-bold hover:text-white transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+<div class="flex items-center gap-3 border-l border-zinc-800 pl-6">
+<div class="text-right">
+<p class="text-xs font-bold text-white leading-none">Alex Rivera</p>
+<p class="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">Super Admin</p>
+</div>
+<img alt="Admin Avatar" class="w-10 h-10 rounded-full border-2 border-orange-500/30 object-cover" data-alt="Close-up portrait of a professional man with short dark hair and a confident expression against a minimalist dark studio background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAjCW-pspI3_KD7yY-I9IeO5gXNwXDNk4XtXH4CSl3KB0hJxdTDzcO5U8Xx2MrhA4OApRMPAfoU3cmWG9U5HxXghaodvx3qPc60cMfku-iDc2tQVqrlbxgE5maYhWzyBnDOdpM-XC07kg7xwQH88U9-kRffkqunsyzCrd2nIjJJFJ6DU4b_zrXED5txVyRXOMUcDRhCfO65QDDG-1VsnusfD7sdEtFLHb7awfDqsJLLRrLORmLo6Vu-AQ9f8h__EQG-IxN8o57BucQ"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-24 p-10 min-h-screen">
+<div class="max-w-6xl mx-auto">
+<!-- Page Header (Editorial Authority) -->
+<div class="flex justify-between items-end mb-12">
+<div class="max-w-xl">
+<h2 class="text-5xl font-black italic text-white font-headline tracking-tighter leading-none">SYSTEM<br/><span class="text-orange-500">PRECISION.</span></h2>
+<p class="text-zinc-500 mt-4 font-body text-lg border-l-2 border-orange-500/30 pl-4">Manage your administrative profile and global gym parameters from a single centralized command center.</p>
+</div>
+<div class="text-right">
+<span class="text-zinc-600 font-['Lexend'] text-xs tracking-[0.2em] uppercase">Status: System Operational</span>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-8">
+<!-- Admin Profile Card -->
+<section class="col-span-12 lg:col-span-5 flex flex-col">
+<div class="bg-zinc-900 p-8 rounded-xl relative overflow-hidden group h-full flex flex-col justify-between">
+<div class="absolute top-0 right-0 w-32 h-32 kinetic-gradient opacity-10 blur-3xl -mr-16 -mt-16 group-hover:opacity-20 transition-opacity"></div>
+<div>
+<span class="text-orange-500 font-headline font-bold text-xs tracking-widest uppercase mb-6 block">Account Identity</span>
+<div class="flex items-center gap-6 mb-8">
+<div class="relative">
+<img alt="Admin Avatar" class="w-24 h-24 rounded-full object-cover border-4 border-zinc-800" data-alt="Professional headshot of Alex Rivera, gym owner, wearing dark athletic gear in high-contrast cinematic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDOC9TffBjgCIyh7B3MbABiXVR4mNY6XYdFSP2WCE3wT_G_5BQB238PdfRqw44iORdpKPr9pfScPINKmiepaCUIje1XQ8PM5KJpGDK8BcA3P0lCnzvIrJ2L8KaClWLsZBkiHP5LwVbrmEmhKTzTtnzl712PonpR7hXMr50oDucYIDNqbuiDc6qOZrNE7gnQmjuNQC1K23HnqQFBcNQgKL9rhqxUYFbGW0n4ISclJzH6rxgDcRJWMxOu3GRA1bLNWE3bitZ0hgZl5oY"/>
+<button class="absolute bottom-0 right-0 w-8 h-8 rounded-full kinetic-gradient flex items-center justify-center text-white border-4 border-zinc-900">
+<span class="material-symbols-outlined text-sm">edit</span>
+</button>
+</div>
+<div>
+<h3 class="text-2xl font-bold text-white font-headline">Alex Rivera</h3>
+<p class="text-zinc-400 font-body">alex.rivera@kineticprecision.com</p>
+<div class="mt-2 flex gap-2">
+<span class="px-2 py-1 bg-orange-500/10 text-orange-500 text-[10px] font-bold rounded uppercase">Owner</span>
+<span class="px-2 py-1 bg-zinc-800 text-zinc-400 text-[10px] font-bold rounded uppercase">Elite Tier</span>
+</div>
+</div>
+</div>
+</div>
+<button class="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold py-4 rounded-xl ghost-border transition-colors flex items-center justify-center gap-2 group-hover:border-orange-500/50">
+<span class="material-symbols-outlined text-lg">manage_accounts</span>
+<span class="font-['Lexend'] text-xs uppercase tracking-widest">Edit Profile Data</span>
+</button>
+</div>
+</section>
+<!-- Gym Details Form -->
+<section class="col-span-12 lg:col-span-7">
+<div class="bg-zinc-900 p-8 rounded-xl h-full">
+<div class="flex justify-between items-center mb-8">
+<span class="text-orange-500 font-headline font-bold text-xs tracking-widest uppercase">Gym Parameters</span>
+<span class="text-[10px] text-zinc-500 font-mono tracking-tighter">HQ_LOC_001</span>
+</div>
+<div class="grid grid-cols-2 gap-6">
+<div class="col-span-2">
+<label class="block text-zinc-500 text-[10px] uppercase font-bold tracking-widest mb-2">Gym Name</label>
+<input class="w-full bg-zinc-950 border-0 border-b border-zinc-800 focus:border-orange-500 focus:ring-0 text-white px-0 py-3 font-headline text-xl transition-all" type="text" value="Kinetic Precision HQ"/>
+</div>
+<div class="col-span-1">
+<label class="block text-zinc-500 text-[10px] uppercase font-bold tracking-widest mb-2">Contact Number</label>
+<input class="w-full bg-zinc-950 border-0 border-b border-zinc-800 focus:border-orange-500 focus:ring-0 text-white px-0 py-3 font-body" type="text" value="+1 (555) 098-7654"/>
+</div>
+<div class="col-span-1">
+<label class="block text-zinc-500 text-[10px] uppercase font-bold tracking-widest mb-2">Website</label>
+<input class="w-full bg-zinc-950 border-0 border-b border-zinc-800 focus:border-orange-500 focus:ring-0 text-white px-0 py-3 font-body" type="text" value="www.kinetic-hq.com"/>
+</div>
+<div class="col-span-2">
+<label class="block text-zinc-500 text-[10px] uppercase font-bold tracking-widest mb-2">Address</label>
+<input class="w-full bg-zinc-950 border-0 border-b border-zinc-800 focus:border-orange-500 focus:ring-0 text-white px-0 py-3 font-body" type="text" value="450 Performance Way, Austin, TX 78701"/>
+</div>
+</div>
+<div class="mt-8 pt-8 border-t border-zinc-800/50 flex justify-end">
+<button class="kinetic-gradient text-on-primary font-bold px-8 py-3 rounded-full text-xs uppercase tracking-widest shadow-[0_10px_20px_rgba(253,139,0,0.1)] hover:scale-105 transition-transform">
+                                Save Changes
+                            </button>
+</div>
+</div>
+</section>
+<!-- PWA & System Settings -->
+<section class="col-span-12 lg:col-span-6">
+<div class="bg-zinc-900 p-8 rounded-xl">
+<h3 class="text-orange-500 font-headline font-bold text-xs tracking-widest uppercase mb-8">PWA &amp; System Protocols</h3>
+<div class="space-y-6">
+<!-- Toggle 1 -->
+<div class="flex items-center justify-between p-4 bg-zinc-950 rounded-xl ghost-border hover:bg-zinc-900/50 transition-colors">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded bg-zinc-900 flex items-center justify-center text-zinc-400">
+<span class="material-symbols-outlined">wifi_off</span>
+</div>
+<div>
+<p class="text-sm font-bold text-white">Enable Offline Mode</p>
+<p class="text-[11px] text-zinc-500">Cache critical data for local access</p>
+</div>
+</div>
+<div class="relative inline-flex h-6 w-11 items-center rounded-full bg-orange-500 cursor-pointer">
+<span class="inline-block h-4 w-4 translate-x-6 transform rounded-full bg-white transition"></span>
+</div>
+</div>
+<!-- Toggle 2 -->
+<div class="flex items-center justify-between p-4 bg-zinc-950 rounded-xl ghost-border hover:bg-zinc-900/50 transition-colors">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded bg-zinc-900 flex items-center justify-center text-zinc-400">
+<span class="material-symbols-outlined">notifications_active</span>
+</div>
+<div>
+<p class="text-sm font-bold text-white">Push Notifications</p>
+<p class="text-[11px] text-zinc-500">Alerts for bookings and PRs</p>
+</div>
+</div>
+<div class="relative inline-flex h-6 w-11 items-center rounded-full bg-orange-500 cursor-pointer">
+<span class="inline-block h-4 w-4 translate-x-6 transform rounded-full bg-white transition"></span>
+</div>
+</div>
+<!-- Toggle 3 -->
+<div class="flex items-center justify-between p-4 bg-zinc-950 rounded-xl ghost-border hover:bg-zinc-900/50 transition-colors">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded bg-zinc-900 flex items-center justify-center text-zinc-400">
+<span class="material-symbols-outlined">dark_mode</span>
+</div>
+<div>
+<p class="text-sm font-bold text-white">Dark Mode</p>
+<p class="text-[11px] text-zinc-500">High-contrast night optimization</p>
+</div>
+</div>
+<div class="relative inline-flex h-6 w-11 items-center rounded-full bg-orange-500 cursor-pointer">
+<span class="inline-block h-4 w-4 translate-x-6 transform rounded-full bg-white transition"></span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Account Security -->
+<section class="col-span-12 lg:col-span-6">
+<div class="bg-zinc-900 p-8 rounded-xl h-full flex flex-col">
+<h3 class="text-orange-500 font-headline font-bold text-xs tracking-widest uppercase mb-8">Security Matrix</h3>
+<div class="space-y-4 flex-grow">
+<button class="w-full text-left p-6 bg-zinc-950 rounded-xl ghost-border hover:border-orange-500/50 transition-all group">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-zinc-400 group-hover:text-orange-500 transition-colors">lock_reset</span>
+<div>
+<p class="text-sm font-bold text-white">Change Password</p>
+<p class="text-[11px] text-zinc-500">Update your access credentials</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-zinc-700">chevron_right</span>
+</div>
+</button>
+<button class="w-full text-left p-6 bg-zinc-950 rounded-xl ghost-border hover:border-orange-500/50 transition-all group">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-zinc-400 group-hover:text-orange-500 transition-colors">shield_lock</span>
+<div>
+<p class="text-sm font-bold text-white">Multi-Factor Authentication</p>
+<p class="text-[11px] text-orange-500/80 font-bold uppercase tracking-widest">Active: Mobile Authenticator</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-zinc-700">chevron_right</span>
+</div>
+</button>
+</div>
+<div class="mt-8 p-4 bg-zinc-950/50 rounded-lg border border-zinc-800/50 border-dashed">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-zinc-500 text-sm">info</span>
+<p class="text-[10px] text-zinc-500 font-body leading-relaxed">Security updates are logged and require biometric re-verification on your primary mobile device.</p>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Footer Meta -->
+<footer class="mt-16 pt-8 border-t border-zinc-900 flex justify-between items-center text-zinc-600 font-body text-[10px] uppercase tracking-[0.3em]">
+<div>© 2024 Kinetic Precision Management v4.2.0</div>
+<div class="flex gap-8">
+<a class="hover:text-orange-500 transition-colors" href="#">API Docs</a>
+<a class="hover:text-orange-500 transition-colors" href="#">Privacy Protocol</a>
+<a class="hover:text-orange-500 transition-colors" href="#">System Logs</a>
+</div>
+</footer>
+</div>
+</main>
+</body></html>

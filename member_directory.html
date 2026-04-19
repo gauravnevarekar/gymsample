@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KINETIC | Member Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600;800;900&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed": "#4d2d00",
+                        "surface-container-low": "#131314",
+                        "on-primary-fixed-variant": "#512800",
+                        "inverse-surface": "#fcf8f9",
+                        "on-secondary": "#512f00",
+                        "on-surface": "#ffffff",
+                        "surface": "#0e0e0f",
+                        "secondary-fixed": "#ffc78a",
+                        "on-tertiary": "#665100",
+                        "on-background": "#ffffff",
+                        "secondary": "#ffa52a",
+                        "primary-fixed": "#fd8b00",
+                        "primary-fixed-dim": "#ea8000",
+                        "secondary-container": "#875200",
+                        "tertiary-fixed": "#ffd33a",
+                        "surface-container-lowest": "#000000",
+                        "on-primary": "#532a00",
+                        "tertiary": "#ffe393",
+                        "inverse-on-surface": "#555556",
+                        "surface-container": "#19191b",
+                        "on-primary-container": "#442100",
+                        "on-primary-fixed": "#180800",
+                        "on-secondary-container": "#fff6f0",
+                        "surface-variant": "#262627",
+                        "surface-bright": "#2c2c2d",
+                        "surface-container-highest": "#262627",
+                        "primary-container": "#fd8b00",
+                        "on-secondary-fixed-variant": "#744600",
+                        "tertiary-container": "#ffd33a",
+                        "on-error-container": "#ffd2c8",
+                        "outline": "#767576",
+                        "on-tertiary-fixed-variant": "#675200",
+                        "surface-dim": "#0e0e0f",
+                        "error-container": "#b92902",
+                        "inverse-primary": "#914d00",
+                        "primary-dim": "#ed8200",
+                        "secondary-dim": "#ef981a",
+                        "on-tertiary-fixed": "#453600",
+                        "on-surface-variant": "#acaaab",
+                        "error": "#ff7351",
+                        "on-error": "#450900",
+                        "primary": "#ff9f4a",
+                        "outline-variant": "#484849",
+                        "background": "#0e0e0f",
+                        "on-tertiary-container": "#5c4900",
+                        "tertiary-fixed-dim": "#efc52b",
+                        "error-dim": "#d53d18",
+                        "secondary-fixed-dim": "#ffb55c",
+                        "surface-tint": "#ff9f4a",
+                        "surface-container-high": "#1f1f21",
+                        "tertiary-dim": "#efc52b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Lexend"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #0e0e0f; }
+        .font-lexend { font-family: 'Lexend', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #0e0e0f; }
+        ::-webkit-scrollbar-thumb { background: #262627; border-radius: 10px; }
+    </style>
+</head>
+<body class="text-on-surface antialiased">
+<!-- TopNavBar Shell -->
+<header class="fixed top-0 w-full z-40 bg-zinc-950/70 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex justify-between items-center px-6 py-3">
+<div class="flex items-center gap-8">
+<span class="font-['Lexend'] text-2xl font-black italic tracking-tighter text-orange-500">KINETIC</span>
+<div class="hidden md:flex gap-6 items-center">
+<a class="text-zinc-400 font-medium hover:text-orange-300 transition-all duration-300" href="index.html">Overview</a>
+<a class="text-orange-500 font-bold border-b-2 border-orange-500 py-1" href="member_directory.html">Members</a>
+<a class="text-zinc-400 font-medium hover:text-orange-300 transition-all duration-300" href="plan_management.html">Schedules</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-zinc-400 hover:text-orange-300 transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<div class="flex items-center gap-3 pl-4 border-l border-zinc-800">
+<span class="text-sm font-medium text-zinc-300 hidden sm:block">Account</span>
+<div class="w-8 h-8 rounded-full bg-zinc-800 overflow-hidden">
+<img alt="Owner Profile" class="w-full h-full object-cover" data-alt="Professional profile portrait of a gym manager in a dark athletic uniform against a clean studio background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLFWTTmwDm3Xo_Hiws61Ey2UEOvDZOtDn_SqlxUxPcUZD2Kem2zQmt97c4cLUo9oPQAl1JrKHmNQ-BArcf7VojOmjZ3JkwcGj4Ptx0rMYKZu5I-C4dj2tslClgQu_itz7I295ia_tKdSZp8uDFdGEzhboCPBeKXXkEJ9u6IfWtgRBQdoId2Rdj1YM8SCl9lxiPHMtyY3goQ9KXGiad4jQNooDYthAvHdZxP2_-UxawE1LH5rVgGRLyyKWGn6EPfksBuYZk9SIWscM"/>
+</div>
+</div>
+</div>
+</header>
+<!-- SideNavBar Shell -->
+<aside class="h-full w-72 fixed left-0 top-0 overflow-y-auto bg-zinc-950 hidden md:flex flex-col gap-2 py-8 z-50">
+<div class="px-8 mb-10">
+<div class="flex items-center gap-3 mb-1">
+<div class="w-8 h-8 bg-orange-500 flex items-center justify-center rounded-lg">
+<span class="material-symbols-outlined text-zinc-950" data-icon="bolt" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<h1 class="font-['Lexend'] font-black text-orange-500 text-xl tracking-widest">KINETIC</h1>
+</div>
+<p class="text-[10px] uppercase tracking-[0.3em] text-zinc-500 font-bold px-1">Precision Management</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="text-zinc-500 py-3 px-8 hover:text-zinc-100 flex items-center gap-4 transition-colors group" href="index.html">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-medium">Dashboard</span>
+</a>
+<a class="bg-gradient-to-r from-orange-500 to-orange-600 text-zinc-950 rounded-r-full py-3 px-8 shadow-lg shadow-orange-500/20 flex items-center gap-4 font-bold" href="member_directory.html">
+<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span>Members</span>
+</a>
+<a class="text-zinc-500 py-3 px-8 hover:text-zinc-100 flex items-center gap-4 transition-colors group" href="plan_management.html">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-medium">Payments</span>
+</a>
+<a class="text-zinc-500 py-3 px-8 hover:text-zinc-100 flex items-center gap-4 transition-colors group" href="expense_management.html">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="font-medium">Expenses</span>
+</a>
+<a class="text-zinc-500 py-3 px-8 hover:text-zinc-100 flex items-center gap-4 transition-colors group" href="admin_profile.html">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-medium">Settings</span>
+</a>
+</nav>
+<div class="px-6 mt-auto">
+<button class="w-full bg-zinc-900 text-orange-500 py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-800 transition-all active:scale-95">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+                Add Member
+            </button>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="md:ml-72 pt-20 px-6 pb-12 min-h-screen">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+<div>
+<h2 class="font-['Lexend'] text-5xl font-black tracking-tight text-white mb-2 uppercase">Members</h2>
+<p class="text-zinc-500 font-medium tracking-wide">Manage your athletic community and subscription cycles</p>
+</div>
+<button class="bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold px-8 py-4 rounded-full flex items-center gap-3 shadow-xl hover:shadow-orange-500/10 transition-all active:scale-95 self-start">
+<span class="material-symbols-outlined font-bold" data-icon="person_add">person_add</span>
+                Add New Member
+            </button>
+</div>
+<!-- Filter & Search Bento -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-8">
+<div class="lg:col-span-8 bg-surface-container-low p-2 rounded-2xl flex flex-col md:flex-row items-center gap-2">
+<div class="relative w-full md:w-1/3 group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-orange-500 transition-colors" data-icon="search">search</span>
+<input class="w-full bg-surface-container-lowest border-none focus:ring-1 focus:ring-orange-500/50 rounded-xl py-3 pl-12 text-on-surface placeholder:text-zinc-600" placeholder="Search by name or phone..." type="text"/>
+</div>
+<div class="flex items-center gap-1 bg-surface-container-lowest p-1 rounded-xl w-full md:w-auto overflow-x-auto">
+<button class="px-6 py-2 rounded-lg text-xs font-bold bg-orange-500 text-zinc-950 uppercase tracking-widest transition-all">All</button>
+<button class="px-6 py-2 rounded-lg text-xs font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-all">Active</button>
+<button class="px-6 py-2 rounded-lg text-xs font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-all">Expired</button>
+<button class="px-6 py-2 rounded-lg text-xs font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-all">Pending</button>
+</div>
+</div>
+<div class="lg:col-span-4 bg-surface-container-low p-2 rounded-2xl flex items-center justify-between px-4">
+<span class="text-sm font-semibold text-zinc-400 uppercase tracking-tighter">Quick Sort:</span>
+<div class="flex items-center gap-4">
+<button class="flex items-center gap-1 text-on-surface text-sm font-medium">
+                        Recent
+                        <span class="material-symbols-outlined text-sm" data-icon="expand_more">expand_more</span>
+</button>
+<button class="w-10 h-10 bg-surface-container-highest rounded-xl flex items-center justify-center text-zinc-400">
+<span class="material-symbols-outlined" data-icon="filter_list">filter_list</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Table Container -->
+<div class="bg-surface-container-low rounded-[2rem] overflow-hidden shadow-2xl">
+<div class="overflow-x-auto">
+<table class="w-full border-collapse text-left">
+<thead>
+<tr class="bg-surface-container-high">
+<th class="px-8 py-5 text-[10px] uppercase tracking-[0.2em] font-black text-zinc-500">Member Details</th>
+<th class="px-6 py-5 text-[10px] uppercase tracking-[0.2em] font-black text-zinc-500">Contact</th>
+<th class="px-6 py-5 text-[10px] uppercase tracking-[0.2em] font-black text-zinc-500">Active Plan</th>
+<th class="px-6 py-5 text-[10px] uppercase tracking-[0.2em] font-black text-zinc-500">Expiry Date</th>
+<th class="px-6 py-5 text-[10px] uppercase tracking-[0.2em] font-black text-zinc-500">Status</th>
+<th class="px-8 py-5 text-[10px] uppercase tracking-[0.2em] font-black text-zinc-500 text-right">Actions</th>
+</tr>
+</thead>
+<tbody id="members-body" class="divide-y divide-zinc-900/50">
+<!-- Dynamic members will be injected here -->
+</tbody>
+</table>
+</div>
+<!-- Table Footer / Pagination -->
+<div class="bg-surface-container p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+<p class="text-xs font-bold text-zinc-500 uppercase tracking-widest">Showing 3 of 124 athletes</p>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-zinc-600 cursor-not-allowed">
+<span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-10 h-10 rounded-lg bg-orange-500 text-zinc-950 font-bold flex items-center justify-center">1</button>
+<button class="w-10 h-10 rounded-lg bg-surface-container-highest text-zinc-400 flex items-center justify-center hover:text-white transition-all">2</button>
+<button class="w-10 h-10 rounded-lg bg-surface-container-highest text-zinc-400 flex items-center justify-center hover:text-white transition-all">3</button>
+<button class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-zinc-400 hover:text-white transition-all">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Empty State (Hidden by default, used for search logic) -->
+<div class="hidden flex-col items-center justify-center py-24 text-center">
+<div class="w-24 h-24 bg-surface-container rounded-full flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-4xl text-zinc-700" data-icon="search_off">search_off</span>
+</div>
+<h3 class="font-lexend text-2xl font-bold text-white mb-2">No Athletes Found</h3>
+<p class="text-zinc-500 max-w-xs mx-auto">Try adjusting your search terms or filters to find the member you're looking for.</p>
+<button class="mt-8 text-orange-500 font-bold border-b border-orange-500/50 pb-1 hover:text-orange-400 transition-all">Reset All Filters</button>
+</div>
+</main>
+<!-- Bottom Nav Shell (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full bg-zinc-950/80 backdrop-blur-2xl px-6 py-4 flex items-center justify-between z-50">
+<button class="flex flex-col items-center gap-1 text-zinc-500">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Dash</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-orange-500">
+<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Members</span>
+</button>
+<div class="-mt-12 bg-gradient-to-br from-orange-500 to-orange-600 p-4 rounded-full shadow-lg shadow-orange-500/40 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-zinc-950 font-black" data-icon="add">add</span>
+</div>
+<button class="flex flex-col items-center gap-1 text-zinc-500">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Pay</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-zinc-500">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Set</span>
+</button>
+</nav>
+
+<script>
+async function loadMembers() {
+    try {
+        const response = await fetch('/api/members');
+        const result = await response.json();
+        
+        const tbody = document.getElementById('members-body');
+        tbody.innerHTML = '';
+        
+        result.data.forEach(member => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-zinc-900/40 transition-colors";
+            
+            // Determine styles
+            const isError = member.status !== 'Active' && member.status !== 'Paid';
+            const statusBg = isError ? 'bg-error/10' : 'bg-tertiary/10';
+            const statusText = isError ? 'text-error' : 'text-tertiary';
+            
+            let html = `
+            <td class="px-8 py-5">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-orange-500/20 bg-zinc-800 flex items-center justify-center">
+                        ${member.avatar_url ? `<img src="${member.avatar_url}" class="w-full h-full object-cover"/>` : `<span class="text-xs font-bold text-zinc-500">${member.name.substring(0, 2).toUpperCase()}</span>`}
+                    </div>
+                    <div>
+                        <div class="font-lexend font-bold text-white tracking-wide">${member.name}</div>
+                        <div class="text-[10px] text-zinc-500 font-mono">#KNT-${1000 + member.id}</div>
+                    </div>
+                </div>
+            </td>
+            <td class="px-6 py-5 text-zinc-300 font-medium">-</td>
+            <td class="px-6 py-5">
+                <div class="inline-flex items-center gap-2 px-3 py-1 ${isError ? 'bg-zinc-800' : 'bg-orange-500/10'} rounded-full">
+                    <span class="w-1.5 h-1.5 rounded-full ${isError ? 'bg-zinc-500' : 'bg-orange-500'}"></span>
+                    <span class="text-xs font-bold ${isError ? 'text-zinc-400' : 'text-orange-500'} uppercase tracking-wider">${member.plan_type}</span>
+                </div>
+            </td>
+            <td class="px-6 py-5">
+                <div class="flex flex-col">
+                    <span class="text-sm font-semibold text-white">${member.join_date}</span>
+                </div>
+            </td>
+            <td class="px-6 py-5">
+                <span class="px-3 py-1 ${statusBg} ${statusText} text-[10px] font-black uppercase tracking-widest rounded-md">${member.status}</span>
+            </td>
+            <td class="px-8 py-5 text-right flex items-center justify-end gap-2">
+                <button class="w-9 h-9 flex items-center justify-center rounded-lg bg-surface-container-highest text-zinc-400 hover:text-white transition-all"><span class="material-symbols-outlined text-lg">edit</span></button>
+            </td>
+            `;
+            
+            tr.innerHTML = html;
+            tbody.appendChild(tr);
+        });
+        
+    } catch (err) {
+        console.error("Failed to load members", err);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadMembers);
+</script>
+</body></html>

@@ -1,0 +1,13 @@
+{
+  "name": "gym-management-pwa",
+  "version": "1.0.0",
+  "description": "Gym Management PWA",
+  "scripts": {
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "sqlite3": "^6.0.1"
+  }
+}

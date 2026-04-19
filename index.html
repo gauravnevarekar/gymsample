@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KINETIC | Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&amp;family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed": "#4d2d00",
+                        "surface-container-low": "#131314",
+                        "on-primary-fixed-variant": "#512800",
+                        "inverse-surface": "#fcf8f9",
+                        "on-secondary": "#512f00",
+                        "on-surface": "#ffffff",
+                        "surface": "#0e0e0f",
+                        "secondary-fixed": "#ffc78a",
+                        "on-tertiary": "#665100",
+                        "on-background": "#ffffff",
+                        "secondary": "#ffa52a",
+                        "primary-fixed": "#fd8b00",
+                        "primary-fixed-dim": "#ea8000",
+                        "secondary-container": "#875200",
+                        "tertiary-fixed": "#ffd33a",
+                        "surface-container-lowest": "#000000",
+                        "on-primary": "#532a00",
+                        "tertiary": "#ffe393",
+                        "inverse-on-surface": "#555556",
+                        "surface-container": "#19191b",
+                        "on-primary-container": "#442100",
+                        "on-primary-fixed": "#180800",
+                        "on-secondary-container": "#fff6f0",
+                        "surface-variant": "#262627",
+                        "surface-bright": "#2c2c2d",
+                        "surface-container-highest": "#262627",
+                        "primary-container": "#fd8b00",
+                        "on-secondary-fixed-variant": "#744600",
+                        "tertiary-container": "#ffd33a",
+                        "on-error-container": "#ffd2c8",
+                        "outline": "#767576",
+                        "on-tertiary-fixed-variant": "#675200",
+                        "surface-dim": "#0e0e0f",
+                        "error-container": "#b92902",
+                        "inverse-primary": "#914d00",
+                        "primary-dim": "#ed8200",
+                        "secondary-dim": "#ef981a",
+                        "on-tertiary-fixed": "#453600",
+                        "on-surface-variant": "#acaaab",
+                        "error": "#ff7351",
+                        "on-error": "#450900",
+                        "primary": "#ff9f4a",
+                        "outline-variant": "#484849",
+                        "background": "#0e0e0f",
+                        "on-tertiary-container": "#5c4900",
+                        "tertiary-fixed-dim": "#efc52b",
+                        "error-dim": "#d53d18",
+                        "secondary-fixed-dim": "#ffb55c",
+                        "surface-tint": "#ff9f4a",
+                        "surface-container-high": "#1f1f21",
+                        "tertiary-dim": "#efc52b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Lexend"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, .headline-font { font-family: 'Lexend', sans-serif; }
+        .glass-nav {
+            background: rgba(9, 9, 10, 0.7);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface selection:bg-primary selection:text-on-primary">
+<!-- SideNavBar -->
+<aside class="hidden md:flex flex-col h-full w-72 fixed left-0 top-0 overflow-y-auto bg-zinc-950 z-50">
+<div class="flex flex-col h-full gap-2 py-8">
+<div class="px-8 mb-10">
+<div class="font-['Lexend'] font-black text-orange-500 text-xl tracking-widest">KINETIC</div>
+<div class="text-[10px] text-zinc-500 uppercase tracking-[0.2em] mt-1 font-medium">Precision Management</div>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="bg-gradient-to-r from-orange-500 to-orange-600 text-zinc-950 rounded-r-full py-3 px-8 shadow-lg shadow-orange-500/20 flex items-center gap-4 transition-all group" href="index.html">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-bold">Dashboard</span>
+</a>
+<a class="text-zinc-500 py-3 px-8 hover:text-zinc-100 hover:bg-zinc-900 transition-colors flex items-center gap-4 group" href="member_directory.html">
+<span class="material-symbols-outlined">group</span>
+<span>Members</span>
+</a>
+<a class="text-zinc-500 py-3 px-8 hover:text-zinc-100 hover:bg-zinc-900 transition-colors flex items-center gap-4 group" href="plan_management.html">
+<span class="material-symbols-outlined">payments</span>
+<span>Payments</span>
+</a>
+<a class="text-zinc-500 py-3 px-8 hover:text-zinc-100 hover:bg-zinc-900 transition-colors flex items-center gap-4 group" href="expense_management.html">
+<span class="material-symbols-outlined">receipt_long</span>
+<span>Expenses</span>
+</a>
+<a class="text-zinc-500 py-3 px-8 hover:text-zinc-100 hover:bg-zinc-900 transition-colors flex items-center gap-4 group" href="admin_profile.html">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+<div class="px-6 mt-auto">
+<button class="w-full py-4 bg-primary text-on-primary rounded-full font-bold flex items-center justify-center gap-2 shadow-lg hover:brightness-110 active:scale-95 transition-all">
+<span class="material-symbols-outlined">add</span>
+                    Add Member
+                </button>
+</div>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-0 md:left-72 z-40 bg-zinc-950/70 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+<div class="flex justify-between items-center w-full px-6 py-4">
+<div class="flex items-center gap-4">
+<span class="md:hidden font-['Lexend'] text-2xl font-black italic tracking-tighter text-orange-500">KINETIC</span>
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">search</span>
+<input class="bg-zinc-900 border-none rounded-full pl-10 pr-4 py-2 text-sm w-64 focus:ring-1 focus:ring-orange-500 transition-all" placeholder="Search members..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="relative text-zinc-400 hover:text-orange-500 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full"></span>
+</button>
+<div class="flex items-center gap-3 pl-6 border-l border-zinc-800">
+<div class="text-right hidden sm:block">
+<p class="text-xs font-bold text-on-surface">Alex Rivera</p>
+<p class="text-[10px] text-zinc-500">Admin</p>
+</div>
+<div class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-700">
+<img alt="Owner Profile" class="w-full h-full object-cover" data-alt="close up of a fit professional gym manager portrait with soft studio lighting and dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDeQdD2qXijSQ6prF71NuK0JgakuHofYMUswSl_tHp9QcqVW8hgGcyJcvRsuNEOwNJk0b2AYcRxcF8j0rFOu58Zz8ONFP07yInKva7N8UjyO4xNR89nqnzUPYPBgEJ_X0OrFbTzNLhLnl9B4fknf4GSDDeZnHYr-40YrfC74Z-YsuLHReptDnLaDnZzj7-gRjF6nFbY-HuSUEDyuZjjoNsXk4gJhKMo71acZGaiseOqIFIDDToUh8MkBB0btXQBgiWihFBtPLY6GzI"/>
+</div>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="md:ml-72 pt-24 pb-12 px-6 lg:px-10 min-h-screen">
+<!-- Dashboard Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
+<div>
+<h1 class="text-4xl md:text-5xl font-black headline-font italic tracking-tighter text-on-surface uppercase">Executive Dashboard</h1>
+<p class="text-zinc-500 mt-2 font-medium">Performance metrics for October 2023</p>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-high p-1 rounded-full border border-outline-variant/10">
+<button class="px-4 py-2 bg-orange-500 text-zinc-950 rounded-full text-xs font-bold">DAILY</button>
+<button class="px-4 py-2 text-zinc-400 text-xs font-bold hover:text-white">WEEKLY</button>
+<button class="px-4 py-2 text-zinc-400 text-xs font-bold hover:text-white">MONTHLY</button>
+</div>
+</div>
+<!-- Key Stat Cards Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+<!-- Total Income -->
+<div class="bg-surface-container-low p-6 rounded-xl relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-6xl text-primary">account_balance_wallet</span>
+</div>
+<p class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Total Income</p>
+<h2 id="stat-income" class="text-3xl font-black headline-font text-on-surface">$42,850</h2>
+<div class="flex items-center gap-1 mt-4 text-tertiary text-xs font-bold">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span>+12.5% vs last month</span>
+</div>
+</div>
+<!-- Total Expenses -->
+<div class="bg-surface-container-low p-6 rounded-xl relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-6xl text-error">receipt_long</span>
+</div>
+<p class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Total Expenses</p>
+<h2 id="stat-expenses" class="text-3xl font-black headline-font text-on-surface">$18,200</h2>
+<div class="flex items-center gap-1 mt-4 text-zinc-500 text-xs font-bold">
+<span class="material-symbols-outlined text-sm">trending_down</span>
+<span>-2.4% vs last month</span>
+</div>
+</div>
+<!-- Net Profit -->
+<div class="bg-surface-container-low p-6 rounded-xl border border-primary/20 bg-gradient-to-br from-surface-container-low to-primary/5 group">
+<p class="text-xs font-bold text-primary uppercase tracking-widest mb-1">Net Profit</p>
+<h2 id="stat-profit" class="text-3xl font-black headline-font text-on-surface">$24,650</h2>
+<div class="flex items-center gap-1 mt-4 text-tertiary text-xs font-bold">
+<span class="material-symbols-outlined text-sm">verified</span>
+<span>Healthy Margin (57%)</span>
+</div>
+</div>
+<!-- Total Members -->
+<div class="bg-surface-container-low p-6 rounded-xl relative overflow-hidden group">
+<p class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">Members</p>
+<div class="flex items-end gap-3">
+<h2 id="stat-total-members" class="text-3xl font-black headline-font text-on-surface">1,248</h2>
+<span class="text-xs font-bold text-zinc-500 mb-1.5 uppercase">Active</span>
+</div>
+<div class="mt-4 h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden flex">
+<div class="h-full bg-primary" style="width: 85%"></div>
+<div class="h-full bg-error" style="width: 15%"></div>
+</div>
+<div class="flex justify-between mt-2 text-[10px] font-bold uppercase tracking-tighter">
+<span id="stat-active-members" class="text-primary">1,060 Active</span>
+<span id="stat-expired-members" class="text-error">188 Expired</span>
+</div>
+</div>
+</div>
+<!-- Charts & Bento Section -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-10">
+<!-- Revenue vs Expenses Chart -->
+<div class="lg:col-span-8 bg-surface-container-low rounded-xl p-8">
+<div class="flex items-center justify-between mb-8">
+<h3 class="text-xl font-bold headline-font uppercase tracking-tight">Revenue vs Expenses</h3>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-primary"></span>
+<span class="text-[10px] font-bold text-zinc-400">REVENUE</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-zinc-700"></span>
+<span class="text-[10px] font-bold text-zinc-400">EXPENSES</span>
+</div>
+</div>
+</div>
+<!-- Mock Chart using HTML/CSS -->
+<div class="relative h-64 flex items-end justify-between gap-2 px-2">
+<div class="absolute inset-0 flex flex-col justify-between pointer-events-none">
+<div class="border-b border-outline-variant/10 w-full h-0"></div>
+<div class="border-b border-outline-variant/10 w-full h-0"></div>
+<div class="border-b border-outline-variant/10 w-full h-0"></div>
+<div class="border-b border-outline-variant/10 w-full h-0"></div>
+</div>
+<!-- Bar 1 -->
+<div class="flex-1 flex flex-col items-center gap-1 group">
+<div class="w-full flex items-end justify-center gap-1 h-full">
+<div class="w-4 bg-primary/20 h-[40%] rounded-t-sm group-hover:bg-primary/40 transition-all"></div>
+<div class="w-4 bg-primary h-[70%] rounded-t-sm"></div>
+</div>
+<span class="text-[10px] font-bold text-zinc-500">JUN</span>
+</div>
+<!-- Bar 2 -->
+<div class="flex-1 flex flex-col items-center gap-1 group">
+<div class="w-full flex items-end justify-center gap-1 h-full">
+<div class="w-4 bg-primary/20 h-[45%] rounded-t-sm group-hover:bg-primary/40 transition-all"></div>
+<div class="w-4 bg-primary h-[75%] rounded-t-sm"></div>
+</div>
+<span class="text-[10px] font-bold text-zinc-500">JUL</span>
+</div>
+<!-- Bar 3 -->
+<div class="flex-1 flex flex-col items-center gap-1 group">
+<div class="w-full flex items-end justify-center gap-1 h-full">
+<div class="w-4 bg-primary/20 h-[35%] rounded-t-sm group-hover:bg-primary/40 transition-all"></div>
+<div class="w-4 bg-primary h-[65%] rounded-t-sm"></div>
+</div>
+<span class="text-[10px] font-bold text-zinc-500">AUG</span>
+</div>
+<!-- Bar 4 (Peak) -->
+<div class="flex-1 flex flex-col items-center gap-1 group">
+<div class="w-full flex items-end justify-center gap-1 h-full">
+<div class="w-4 bg-primary/20 h-[50%] rounded-t-sm group-hover:bg-primary/40 transition-all"></div>
+<div class="w-4 bg-primary h-[95%] rounded-t-sm"></div>
+</div>
+<span class="text-[10px] font-bold text-zinc-500">SEP</span>
+</div>
+<!-- Bar 5 (Current) -->
+<div class="flex-1 flex flex-col items-center gap-1 group">
+<div class="w-full flex items-end justify-center gap-1 h-full">
+<div class="w-4 bg-primary/20 h-[48%] rounded-t-sm group-hover:bg-primary/40 transition-all"></div>
+<div class="w-4 bg-primary h-[85%] rounded-t-sm"></div>
+</div>
+<span class="text-[10px] font-bold text-orange-400">OCT</span>
+</div>
+</div>
+</div>
+<!-- Membership Status Pie -->
+<div class="lg:col-span-4 bg-surface-container-low rounded-xl p-8 flex flex-col items-center">
+<h3 class="text-xl font-bold headline-font uppercase tracking-tight self-start mb-10">Status Distribution</h3>
+<div class="relative w-48 h-48 rounded-full border-[16px] border-zinc-800 flex items-center justify-center">
+<div class="absolute inset-0 rounded-full border-[16px] border-primary border-t-transparent border-l-transparent rotate-[45deg]"></div>
+<div class="text-center">
+<p class="text-4xl font-black headline-font">85%</p>
+<p class="text-[10px] font-bold text-zinc-500 uppercase">Retention</p>
+</div>
+</div>
+<div class="mt-10 w-full space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-xs font-medium text-zinc-300">Active Members</span>
+</div>
+<span class="text-xs font-bold">1,060</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="text-xs font-medium text-zinc-300">Trial Period</span>
+</div>
+<span class="text-xs font-bold">42</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="text-xs font-medium text-zinc-300">Expired</span>
+</div>
+<span class="text-xs font-bold">188</span>
+</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Recent Expiry Alerts -->
+<div class="lg:col-span-4 bg-surface-container-low rounded-xl p-6">
+<div class="flex items-center justify-between mb-6">
+<h3 class="text-lg font-bold headline-font uppercase tracking-tight flex items-center gap-2">
+<span class="material-symbols-outlined text-error">alarm</span>
+                        Expiry Alerts
+                    </h3>
+<span class="bg-error/10 text-error px-2 py-0.5 rounded text-[10px] font-black italic">NEXT 72H</span>
+</div>
+<div class="space-y-3">
+<!-- Member 1 -->
+<div class="bg-surface-container-high p-4 rounded-lg flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden">
+<img alt="Member Avatar" class="w-full h-full object-cover" data-alt="portrait of a muscular young male athlete with short hair and intense look" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCIleeoVX1Xxyuca78uzDB_n6YQPZB0RMfDMsenJaBnFK0bpTUsPUzc4h3NxIo9AgTcQ2hE2g2FnWCcxodeeNPFgLtCDDYM9i0iGwfn6raHyDsrGnzl2UGHp2ff_hhrImLUvzURoE5GCovdkLpWcAjl95QKl8E9PjvZjbihD3Au6-sExhGNRFiJ22dmg9ECu6OfSpga3UKPpJErDBtolh8liIrd_YZOAWkJrf4sDShCVawRp1JoQClt7g5DTyrIkpDLG5TJGrTqHak"/>
+</div>
+<div>
+<p class="text-sm font-bold">Julian D.</p>
+<p class="text-[10px] text-error font-medium">Expires in 12h</p>
+</div>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">chat</span>
+</button>
+</div>
+<!-- Member 2 -->
+<div class="bg-surface-container-high p-4 rounded-lg flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden">
+<img alt="Member Avatar" class="w-full h-full object-cover" data-alt="portrait of a fit woman athlete with hair in a bun wearing gym gear" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3OCSDCE-012l6zUteUs9ZhtQtbU0MiTV4APUuLWKH5ZU-M1Nt3qTdbfefAaIQ5yOuHWg-Ce5Rygv0E3FVQHfAZ-p0lcDag9SN7NSGjSjQPJmuaIj90Q0ZIA-S9Yk0hqfrB10OhIFtFYE1NebTXOYGi6Gr-_JYUpnlUyqNnD7QvYIxyCELtxxW7QywjekijVd9QWdCRuYqMF3DiCmjaI0VgpotPsr9n0h7gtCA-Cdr1LPoSo8ayZWT55chmCVWccJfllBVtwJR2DI"/>
+</div>
+<div>
+<p class="text-sm font-bold">Sarah M.</p>
+<p class="text-[10px] text-error font-medium">Expires in 1 day</p>
+</div>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">chat</span>
+</button>
+</div>
+<!-- Member 3 -->
+<div class="bg-surface-container-high p-4 rounded-lg flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden">
+<img alt="Member Avatar" class="w-full h-full object-cover" data-alt="man in his 40s fit and healthy athletic build portrait with gym equipment background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDL0NM6EgqsQpU3cVAze8pymOyXZhMRfMnLMIY3aEzdeyArUjY_vIa6ewa5mgymJAKqqJ1_piv3Nlwl24X5BxHGBf2ncLWXJhl4NKZ0O1O2nyWCMW1ygNDEI-MDbCMiaQBHaFBmxyRclrJUzSZrv2VAG2DsOR620tqXqKz5JkDYbNxp1d3Dln_tpbyP1WZzSpMEbifb1qpNRkocISSWEX3cZwK8gPUJVNUXeUupI6dSVlNT95b9atomSVqL41p3Ao4MelyxXxKhEGA"/>
+</div>
+<div>
+<p class="text-sm font-bold">Rick K.</p>
+<p class="text-[10px] text-zinc-500 font-medium">Expires in 3 days</p>
+</div>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">chat</span>
+</button>
+</div>
+</div>
+<button class="w-full mt-6 py-3 text-xs font-bold text-zinc-400 hover:text-white transition-colors border border-outline-variant/10 rounded-lg">View All Alerts</button>
+</div>
+<!-- Recent Payments Table -->
+<div class="lg:col-span-8 bg-surface-container-low rounded-xl p-6 overflow-hidden">
+<div class="flex items-center justify-between mb-6">
+<h3 class="text-lg font-bold headline-font uppercase tracking-tight">Recent Transactions</h3>
+<button class="text-primary text-xs font-bold uppercase tracking-widest hover:underline">Download CSV</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-outline-variant/10">
+<th class="pb-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Member</th>
+<th class="pb-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Plan</th>
+<th class="pb-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Date</th>
+<th class="pb-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Amount</th>
+<th class="pb-4 text-[10px] font-black text-zinc-500 uppercase tracking-widest">Status</th>
+</tr>
+</thead>
+<tbody id="tx-body" class="divide-y divide-outline-variant/5">
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation for Mobile -->
+<nav class="md:hidden fixed bottom-0 left-0 right-0 glass-nav z-50 flex items-center justify-around py-3 px-2 border-t border-zinc-800/50">
+<a class="flex flex-col items-center gap-1 text-orange-500" href="index.html">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Dash</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-zinc-500" href="member_directory.html">
+<span class="material-symbols-outlined">group</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Members</span>
+</a>
+<div class="relative -top-6">
+<button class="w-14 h-14 bg-primary text-on-primary rounded-full shadow-[0_10px_20px_rgba(253,139,0,0.4)] flex items-center justify-center active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-3xl font-bold">add</span>
+</button>
+</div>
+<a class="flex flex-col items-center gap-1 text-zinc-500" href="expense_management.html">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Bills</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-zinc-500" href="admin_profile.html">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Config</span>
+</a>
+</nav>
+
+<script>
+async function loadDashboard() {
+    try {
+        const response = await fetch('/api/dashboard');
+        const data = await response.json();
+        
+        document.getElementById('stat-income').innerText = "$" + data.totalIncome.toLocaleString();
+        document.getElementById('stat-expenses').innerText = "$" + data.totalExpenses.toLocaleString();
+        document.getElementById('stat-profit').innerText = "$" + data.netProfit.toLocaleString();
+        document.getElementById('stat-total-members').innerText = data.totalMembers.toLocaleString();
+        document.getElementById('stat-active-members').innerText = data.activeMembers.toLocaleString() + " Active";
+        document.getElementById('stat-expired-members').innerText = data.expiredMembers.toLocaleString() + " Expired";
+
+        // Load transactions
+        const txResp = await fetch('/api/transactions');
+        const txData = await txResp.json();
+        const txBody = document.getElementById('tx-body');
+        txBody.innerHTML = '';
+        
+        txData.data.forEach(tx => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-zinc-900/50 transition-colors group";
+            
+            const isError = tx.status !== 'Paid';
+            const statusBg = isError ? 'bg-error/10' : 'bg-tertiary/10';
+            const statusText = isError ? 'text-error' : 'text-tertiary';
+            const initials = tx.member_name.substring(0, 2).toUpperCase();
+
+            tr.innerHTML = `
+            <td class="py-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded bg-zinc-800 flex items-center justify-center text-[10px] font-bold">${initials}</div>
+                    <span class="text-sm font-medium">${tx.member_name}</span>
+                </div>
+            </td>
+            <td class="py-4 text-xs font-medium text-zinc-400 italic">${tx.plan_type}</td>
+            <td class="py-4 text-xs font-medium text-zinc-500">${tx.date}</td>
+            <td class="py-4 text-sm font-black">$${tx.amount.toFixed(2)}</td>
+            <td class="py-4">
+                <span class="${statusBg} ${statusText} px-2 py-1 rounded text-[10px] font-black uppercase">${tx.status}</span>
+            </td>
+            `;
+            txBody.appendChild(tr);
+        });
+
+    } catch (err) {
+        console.error("Dashboard fetch error:", err);
+    }
+}
+document.addEventListener('DOMContentLoaded', loadDashboard);
+</script>
+</body></html>

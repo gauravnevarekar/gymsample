@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KINETIC | Expense Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&amp;family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "inverse-surface": "#fcf8f9",
+            "tertiary-fixed-dim": "#efc52b",
+            "secondary": "#ffa52a",
+            "surface-container-lowest": "#000000",
+            "secondary-fixed-dim": "#ffb55c",
+            "on-secondary-container": "#fff6f0",
+            "primary-dim": "#ed8200",
+            "tertiary-container": "#ffd33a",
+            "on-primary-fixed-variant": "#512800",
+            "primary": "#ff9f4a",
+            "on-primary-fixed": "#180800",
+            "surface-container-low": "#131314",
+            "on-tertiary": "#665100",
+            "secondary-fixed": "#ffc78a",
+            "error-container": "#b92902",
+            "surface-tint": "#ff9f4a",
+            "on-secondary-fixed-variant": "#744600",
+            "surface-container-highest": "#262627",
+            "outline-variant": "#484849",
+            "primary-container": "#fd8b00",
+            "primary-fixed": "#fd8b00",
+            "secondary-container": "#875200",
+            "on-tertiary-fixed-variant": "#675200",
+            "tertiary": "#ffe393",
+            "on-tertiary-container": "#5c4900",
+            "secondary-dim": "#ef981a",
+            "on-background": "#ffffff",
+            "on-surface": "#ffffff",
+            "surface-dim": "#0e0e0f",
+            "outline": "#767576",
+            "surface-container-high": "#1f1f21",
+            "on-secondary": "#512f00",
+            "surface-container": "#19191b",
+            "background": "#0e0e0f",
+            "on-surface-variant": "#acaaab",
+            "on-tertiary-fixed": "#453600",
+            "tertiary-fixed": "#ffd33a",
+            "error-dim": "#d53d18",
+            "primary-fixed-dim": "#ea8000",
+            "on-primary": "#532a00",
+            "on-secondary-fixed": "#4d2d00",
+            "on-error-container": "#ffd2c8",
+            "surface-variant": "#262627",
+            "on-primary-container": "#442100",
+            "error": "#ff7351",
+            "surface-bright": "#2c2c2d",
+            "surface": "#0e0e0f",
+            "inverse-primary": "#914d00",
+            "inverse-on-surface": "#555556",
+            "on-error": "#450900",
+            "tertiary-dim": "#efc52b"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "fontFamily": {
+            "headline": ["Lexend"],
+            "body": ["Inter"],
+            "label": ["Inter"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    body { background-color: #0e0e0f; color: #ffffff; font-family: 'Inter', sans-serif; }
+    .font-lexend { font-family: 'Lexend', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .glass-nav { background: rgba(31, 31, 33, 0.7); backdrop-filter: blur(20px); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-background min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="bg-[#1f1f21]/70 backdrop-blur-xl docked full-width top-0 sticky z-50 shadow-[0_20px_40px_rgba(0,0,0,0.4)] flex justify-between items-center w-full px-6 py-4">
+<div class="flex items-center gap-4">
+<span class="text-2xl font-black italic text-orange-500 tracking-widest font-lexend">KINETIC</span>
+<nav class="hidden md:flex gap-6 ml-8">
+<a class="text-zinc-400 font-lexend font-bold transition-colors hover:text-orange-400" href="index.html">Dashboard</a>
+<a class="text-orange-500 font-bold font-lexend transition-colors hover:text-orange-400" href="expense_management.html">Expenses</a>
+<a class="text-zinc-400 font-lexend font-bold transition-colors hover:text-orange-400" href="member_directory.html">Members</a>
+<a class="text-zinc-400 font-lexend font-bold transition-colors hover:text-orange-400" href="plan_management.html">Schedule</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-zinc-400 hover:text-orange-400 active:scale-95 transition-all"><span class="material-symbols-outlined">add_circle</span></button>
+<button class="text-zinc-400 hover:text-orange-400 active:scale-95 transition-all"><span class="material-symbols-outlined">notifications</span></button>
+<div class="w-10 h-10 rounded-full overflow-hidden border border-outline-variant/20">
+<img class="w-full h-full object-cover" data-alt="Close-up portrait of a professional male gym manager with a confident expression in a dimly lit modern office" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAX8912rmQrrH8HYzZ42Cbcv9NZAT5gDtP1kBYPZofCWERtlLHYtwY6kB6pQ83IUlwQsgIEI6ihyGTmdPMypD3BPH8WaRcn7d_RqpEh5Xi7cEMZXBxTnBXd2ndmHizmwM-G7OgMYaqJK3MEqEr0okWZOmHpQVwgrXvJsLQzdXXbYFHIGJpFO5LLHGprd7fNklvCzmL8ENG-c51FJBiivR6219VEbv2_kR3AlYX0QshjTx0CBwmIQOGYt8rQUyoVVvTmkcxjGdbG77c"/>
+</div>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-6 pt-8">
+<!-- Title & Action Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+<div>
+<h1 class="text-5xl font-black font-headline tracking-tighter text-on-surface mb-2">Expense Tracking</h1>
+<p class="text-on-surface-variant font-body">Real-time financial audit and operational overhead control.</p>
+</div>
+<div class="flex gap-3">
+<div class="relative group">
+<select class="appearance-none bg-surface-container-high text-on-surface py-3 pl-5 pr-12 rounded-full border-none focus:ring-2 focus:ring-primary font-lexend font-bold tracking-tight text-sm">
+<option>October 2023</option>
+<option>September 2023</option>
+<option>August 2023</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">keyboard_arrow_down</span>
+</div>
+<button class="bg-gradient-to-br from-primary to-primary-container text-on-primary px-6 py-3 rounded-full font-lexend font-bold text-sm flex items-center gap-2 active:scale-95 transition-all shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-[20px]">add</span>
+          Add New Expense
+        </button>
+</div>
+</div>
+<!-- Summary Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+<div class="bg-surface-container-high p-8 rounded-full flex flex-col justify-between group transition-all hover:bg-surface-bright relative overflow-hidden">
+<div class="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
+<span class="material-symbols-outlined text-[120px]">account_balance_wallet</span>
+</div>
+<span class="text-on-surface-variant font-lexend font-bold uppercase tracking-widest text-xs mb-4">Total Expenses (This Month)</span>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-black font-headline text-primary tracking-tighter">$14,280.00</span>
+<span class="text-tertiary-fixed-dim text-sm font-bold font-lexend">+4.2%</span>
+</div>
+</div>
+<div class="bg-surface-container-high p-8 rounded-full flex flex-col justify-between group transition-all hover:bg-surface-bright relative overflow-hidden">
+<div class="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
+<span class="material-symbols-outlined text-[120px]">savings</span>
+</div>
+<span class="text-on-surface-variant font-lexend font-bold uppercase tracking-widest text-xs mb-4">Remaining Budget</span>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-black font-headline text-on-surface tracking-tighter">$5,720.00</span>
+<span class="text-on-surface-variant text-sm font-lexend">of $20k</span>
+</div>
+</div>
+<div class="bg-surface-container-high p-8 rounded-full flex flex-col justify-between group transition-all hover:bg-surface-bright relative overflow-hidden">
+<div class="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
+<span class="material-symbols-outlined text-[120px]">category</span>
+</div>
+<span class="text-on-surface-variant font-lexend font-bold uppercase tracking-widest text-xs mb-4">Top Category</span>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-black font-headline text-tertiary-fixed-dim tracking-tighter">Equipment</span>
+<span class="text-on-surface-variant text-sm font-lexend">38%</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Breakdown Section -->
+<div class="lg:col-span-1">
+<div class="bg-surface-container-low p-8 rounded-full border border-outline-variant/10">
+<h2 class="text-xl font-black font-headline tracking-tight mb-8">Category Breakdown</h2>
+<div class="space-y-8">
+<div class="space-y-3">
+<div class="flex justify-between text-sm font-lexend font-bold uppercase tracking-tighter">
+<span class="text-on-surface-variant">Rent</span>
+<span class="text-on-surface">$5,500</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[38%] rounded-full"></div>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-sm font-lexend font-bold uppercase tracking-tighter">
+<span class="text-on-surface-variant">Electricity</span>
+<span class="text-on-surface">$1,250</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[12%] rounded-full"></div>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-sm font-lexend font-bold uppercase tracking-tighter">
+<span class="text-on-surface-variant">Equipment</span>
+<span class="text-on-surface">$4,800</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-tertiary-fixed-dim w-[34%] rounded-full"></div>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-sm font-lexend font-bold uppercase tracking-tighter">
+<span class="text-on-surface-variant">Maintenance</span>
+<span class="text-on-surface">$1,930</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[14%] rounded-full"></div>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-sm font-lexend font-bold uppercase tracking-tighter">
+<span class="text-on-surface-variant">Other</span>
+<span class="text-on-surface">$800</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-outline w-[8%] rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Expenditures Table -->
+<div class="lg:col-span-2">
+<div class="bg-surface-container-low rounded-full p-2 border border-outline-variant/10 overflow-hidden">
+<div class="px-8 pt-6 pb-4">
+<h2 class="text-xl font-black font-headline tracking-tight">Recent Expenditures</h2>
+</div>
+<div class="overflow-x-auto no-scrollbar px-6 pb-6">
+<table class="w-full text-left border-separate border-spacing-y-3">
+<thead>
+<tr class="text-on-surface-variant font-lexend font-bold text-[10px] uppercase tracking-widest">
+<th class="px-4 py-2">Date</th>
+<th class="px-4 py-2">Category</th>
+<th class="px-4 py-2">Vendor/Description</th>
+<th class="px-4 py-2 text-right">Amount</th>
+</tr>
+</thead>
+<tbody class="font-body text-sm">
+<tr class="bg-surface-container-high/50 hover:bg-surface-container-high transition-colors group cursor-pointer">
+<td class="px-4 py-5 rounded-l-full text-on-surface-variant font-medium">Oct 12, 2023</td>
+<td class="px-4 py-5">
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter">Equipment</span>
+</td>
+<td class="px-4 py-5 text-on-surface font-semibold italic">TechnoGym Maintenance - Set 4 Repair</td>
+<td class="px-4 py-5 rounded-r-full text-right text-on-surface font-black">$450.00</td>
+</tr>
+<tr class="bg-surface-container-high/50 hover:bg-surface-container-high transition-colors group cursor-pointer">
+<td class="px-4 py-5 rounded-l-full text-on-surface-variant font-medium">Oct 10, 2023</td>
+<td class="px-4 py-5">
+<span class="bg-tertiary-fixed-dim/10 text-tertiary-fixed-dim px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter">Rent</span>
+</td>
+<td class="px-4 py-5 text-on-surface font-semibold italic">Downtown Plaza Real Estate</td>
+<td class="px-4 py-5 rounded-r-full text-right text-on-surface font-black">$5,500.00</td>
+</tr>
+<tr class="bg-surface-container-high/50 hover:bg-surface-container-high transition-colors group cursor-pointer">
+<td class="px-4 py-5 rounded-l-full text-on-surface-variant font-medium">Oct 08, 2023</td>
+<td class="px-4 py-5">
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter">Electricity</span>
+</td>
+<td class="px-4 py-5 text-on-surface font-semibold italic">City Power &amp; Grid Co.</td>
+<td class="px-4 py-5 rounded-r-full text-right text-on-surface font-black">$1,250.40</td>
+</tr>
+<tr class="bg-surface-container-high/50 hover:bg-surface-container-high transition-colors group cursor-pointer">
+<td class="px-4 py-5 rounded-l-full text-on-surface-variant font-medium">Oct 05, 2023</td>
+<td class="px-4 py-5">
+<span class="bg-secondary/10 text-secondary px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter">Maintenance</span>
+</td>
+<td class="px-4 py-5 text-on-surface font-semibold italic">Deep Clean Services LLC</td>
+<td class="px-4 py-5 rounded-r-full text-right text-on-surface font-black">$320.00</td>
+</tr>
+<tr class="bg-surface-container-high/50 hover:bg-surface-container-high transition-colors group cursor-pointer">
+<td class="px-4 py-5 rounded-l-full text-on-surface-variant font-medium">Oct 02, 2023</td>
+<td class="px-4 py-5">
+<span class="bg-outline/20 text-on-surface-variant px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter">Other</span>
+</td>
+<td class="px-4 py-5 text-on-surface font-semibold italic">Office Supplies - Ink &amp; Paper</td>
+<td class="px-4 py-5 rounded-r-full text-right text-on-surface font-black">$85.25</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-6 pt-2 bg-[#0e0e0f]/80 backdrop-blur-lg z-50 md:hidden shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+<div class="flex flex-col items-center justify-center text-zinc-500 py-2 px-4 hover:bg-zinc-800/50 rounded-xl active:scale-90 transition-all duration-150">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-lexend text-[10px] uppercase tracking-widest mt-1">Dashboard</span>
+</div>
+<div class="flex flex-col items-center justify-center text-orange-500 bg-orange-500/10 rounded-xl py-2 px-4 active:scale-90 transition-all duration-150">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-lexend text-[10px] uppercase tracking-widest mt-1">Expenses</span>
+</div>
+<div class="flex flex-col items-center justify-center text-zinc-500 py-2 px-4 hover:bg-zinc-800/50 rounded-xl active:scale-90 transition-all duration-150">
+<span class="material-symbols-outlined">group</span>
+<span class="font-lexend text-[10px] uppercase tracking-widest mt-1">Members</span>
+</div>
+<div class="flex flex-col items-center justify-center text-zinc-500 py-2 px-4 hover:bg-zinc-800/50 rounded-xl active:scale-90 transition-all duration-150">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-lexend text-[10px] uppercase tracking-widest mt-1">Schedule</span>
+</div>
+</nav>
+</body></html>
