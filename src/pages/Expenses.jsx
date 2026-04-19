@@ -42,21 +42,22 @@ export default function Expenses() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-      <div className="flex justify-between items-center mb-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 md:mb-10 gap-4">
         <div>
-          <h1 className="text-4xl font-black headline-font italic uppercase tracking-tighter text-white">Expenses</h1>
-          <p className="text-zinc-500 font-medium text-sm mt-1">Track gym operational costs</p>
+          <h1 className="text-3xl md:text-4xl font-black headline-font italic uppercase tracking-tighter text-white">Expenses</h1>
+          <p className="text-sm md:text-base text-zinc-500 font-medium mt-1">Track gym operational costs</p>
         </div>
         <motion.button 
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setShowAddModal(true)}
-          className="bg-error hover:bg-error-dim text-white px-6 py-3 rounded-xl font-bold shadow-[0_0_15px_rgba(255,115,81,0.3)] border border-error/50 transition-colors flex items-center gap-2">
+          className="w-full md:w-auto bg-error hover:bg-error-dim text-white px-6 py-3.5 md:py-3 rounded-xl font-bold shadow-[0_0_15px_rgba(255,115,81,0.3)] border border-error/50 transition-colors flex items-center justify-center gap-2">
           <span className="material-symbols-outlined text-sm">remove</span> Log Expense
         </motion.button>
       </div>
 
-      <div className="bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 shadow-2xl overflow-hidden">
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 shadow-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
@@ -93,6 +94,37 @@ export default function Expenses() {
         </div>
       </div>
 
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {expenses.length === 0 ? (
+          <div className="py-12 text-center text-zinc-500 font-medium">No expenses logged yet.</div>
+        ) : (
+          <AnimatePresence>
+            {expenses.map(exp => (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                key={exp.id} 
+                className="bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 p-5 shadow-lg flex flex-col gap-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-lg font-black text-white">{exp.category}</h3>
+                    <p className="text-xs text-zinc-400 mt-0.5">{new Date(exp.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                  </div>
+                  <span className="text-error font-black text-lg">-₹{exp.amount.toFixed(2)}</span>
+                </div>
+                
+                {exp.description && (
+                  <div className="mt-1">
+                    <p className="text-sm font-medium text-zinc-300">{exp.description}</p>
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        )}
+      </div>
+
       <AnimatePresence>
         {showAddModal && (
           <motion.div 
@@ -100,12 +132,12 @@ export default function Expenses() {
             className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
             <motion.div 
               initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
-              className="bg-surface-container-highest p-8 rounded-2xl w-full max-w-md border border-white/5 shadow-2xl relative overflow-hidden">
+              className="bg-surface-container-highest p-6 md:p-8 rounded-2xl w-full max-w-md border border-white/5 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 p-3">
-                <button onClick={() => setShowAddModal(false)} className="text-zinc-500 hover:text-white"><span className="material-symbols-outlined">close</span></button>
+                <button onClick={() => setShowAddModal(false)} className="text-zinc-500 hover:text-white p-2 flex"><span className="material-symbols-outlined">close</span></button>
               </div>
 
-              <h2 className="text-2xl font-black headline-font italic mb-6 text-white uppercase">Add Expense</h2>
+              <h2 className="text-xl md:text-2xl font-black headline-font italic mb-6 text-white uppercase">Add Expense</h2>
               
               <form onSubmit={handleAddExpense} className="space-y-5">
                 <div>

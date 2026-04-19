@@ -82,22 +82,23 @@ export default function Payments() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-      <div className="flex justify-between items-center mb-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 md:mb-10 gap-4">
         <div>
-          <h1 className="text-4xl font-black headline-font uppercase italic tracking-tighter text-white">Payments</h1>
-          <p className="text-zinc-500 font-medium text-sm mt-1">Record incoming revenues</p>
+          <h1 className="text-3xl md:text-4xl font-black headline-font uppercase italic tracking-tighter text-white">Payments</h1>
+          <p className="text-sm md:text-base text-zinc-500 font-medium mt-1">Record incoming revenues</p>
         </div>
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setShowAddModal(true)}
-          className="bg-primary hover:bg-primary-dim text-on-primary px-6 py-3 rounded-xl font-bold shadow-[0_0_15px_rgba(253,139,0,0.3)] transition-colors flex items-center gap-2"
+          className="w-full md:w-auto bg-primary hover:bg-primary-dim text-on-primary px-6 py-3.5 md:py-3 rounded-xl font-bold shadow-[0_0_15px_rgba(253,139,0,0.3)] transition-colors flex items-center justify-center gap-2"
         >
           <span className="material-symbols-outlined text-sm">add</span> Receive Payment
         </motion.button>
       </div>
 
-      <div className="bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 shadow-2xl overflow-hidden">
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 shadow-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
@@ -137,6 +138,37 @@ export default function Payments() {
         </div>
       </div>
 
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {payments.length === 0 ? (
+          <div className="py-12 text-center text-zinc-500 font-medium">No payments found.</div>
+        ) : (
+          <AnimatePresence>
+            {payments.map((p) => (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                key={p.id}
+                className="bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 p-5 shadow-lg flex flex-col gap-3"
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-lg font-black text-white">{p.member_name}</h3>
+                    <p className="text-xs text-zinc-400 mt-0.5">{new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                  </div>
+                  <span className="text-primary font-black text-lg">+₹{p.amount.toFixed(2)}</span>
+                </div>
+                
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="bg-white/10 border border-white/20 text-white px-2 py-1 rounded text-[10px] font-bold tracking-wider">{p.plan_type}</span>
+                  <span className="bg-tertiary/10 border border-tertiary/20 text-tertiary px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest">{p.method}</span>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        )}
+      </div>
+
       <AnimatePresence>
         {showAddModal && (
           <motion.div
@@ -149,13 +181,13 @@ export default function Payments() {
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="bg-surface-container-highest p-8 rounded-2xl w-full max-w-md border border-white/5 shadow-2xl relative overflow-hidden"
+              className="bg-surface-container-highest p-6 md:p-8 rounded-2xl w-full max-w-md border border-white/5 shadow-2xl relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 p-3">
-                <button onClick={() => setShowAddModal(false)} className="text-zinc-500 hover:text-white"><span className="material-symbols-outlined">close</span></button>
+                <button onClick={() => setShowAddModal(false)} className="text-zinc-500 hover:text-white p-2 flex"><span className="material-symbols-outlined">close</span></button>
               </div>
 
-              <h2 className="text-2xl font-black headline-font italic mb-6 text-white uppercase">Record Payment</h2>
+              <h2 className="text-xl md:text-2xl font-black headline-font italic mb-6 text-white uppercase">Record Payment</h2>
 
               <form onSubmit={handleAddPayment} className="space-y-5">
                 <div>

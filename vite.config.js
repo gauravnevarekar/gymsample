@@ -10,24 +10,26 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      includeAssets: ['favicon.svg'],
       devOptions: {
         enabled: true
       },
       manifest: {
         name: 'Gym Management',
         short_name: 'GymPWA',
-        description: 'Manage Gym Member subcriptions, payments, and expenses',
+        description: 'Manage Gym Member subscriptions, payments, and expenses',
         theme_color: '#fd8b00',
         background_color: '#0e0e0f',
         display: 'standalone',
+        start_url: '/',
         icons: [
           {
-            src: 'https://raw.githubusercontent.com/vitejs/vite/main/docs/images/vite.svg', // generic placeholder
+            src: '/favicon.svg',
             sizes: '192x192',
             type: 'image/svg+xml'
           },
           {
-            src: 'https://raw.githubusercontent.com/vitejs/vite/main/docs/images/vite.svg', // generic placeholder
+            src: '/favicon.svg',
             sizes: '512x512',
             type: 'image/svg+xml'
           }

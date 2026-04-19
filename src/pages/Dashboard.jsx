@@ -157,64 +157,64 @@ export default function Dashboard() {
     <motion.div initial="hidden" animate="visible" transition={{ staggerChildren: 0.1 }}>
       
       {/* Header */}
-      <motion.div variants={cardVariant} className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
+      <motion.div variants={cardVariant} className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-10 gap-2 md:gap-4">
         <div>
-          <h1 className="text-4xl md:text-5xl font-black headline-font italic tracking-tighter text-on-surface uppercase drop-shadow-lg">Dashboard</h1>
-          <p className="text-zinc-400 mt-1 font-medium tracking-wide">Live performance indicators</p>
+          <h1 className="text-3xl md:text-5xl font-black headline-font italic tracking-tighter text-on-surface uppercase drop-shadow-lg">Dashboard</h1>
+          <p className="text-sm md:text-base text-zinc-400 mt-1 font-medium tracking-wide">Live performance indicators</p>
         </div>
       </motion.div>
 
       {/* Income Row - Highlighting Times */}
-      <motion.div variants={cardVariant} className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-primary/20 p-6 rounded-2xl bg-gradient-to-br from-surface to-primary/5 hover:-translate-y-1 transition-transform">
+      <motion.div variants={cardVariant} className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8">
+        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-primary/20 p-4 md:p-6 rounded-2xl bg-gradient-to-br from-surface to-primary/5 hover:-translate-y-1 transition-transform">
           <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1 flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">calendar_today</span> Today's Income</p>
-          <h2 className="text-4xl font-black headline-font text-white">₹{stats.incomeToday.toLocaleString()}</h2>
+          <h2 className="text-2xl md:text-4xl font-black headline-font text-white">₹{stats.incomeToday.toLocaleString()}</h2>
         </div>
-        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-white/5 p-6 rounded-2xl hover:-translate-y-1 transition-transform">
+        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-white/5 p-4 md:p-6 rounded-2xl hover:-translate-y-1 transition-transform">
           <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Weekly Income</p>
-          <h2 className="text-3xl font-black headline-font text-white">₹{stats.incomeWeekly.toLocaleString()}</h2>
+          <h2 className="text-2xl md:text-3xl font-black headline-font text-white">₹{stats.incomeWeekly.toLocaleString()}</h2>
         </div>
-        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-white/5 p-6 rounded-2xl hover:-translate-y-1 transition-transform">
+        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-white/5 p-4 md:p-6 rounded-2xl hover:-translate-y-1 transition-transform">
           <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Monthly Income</p>
-          <h2 className="text-3xl font-black headline-font text-white">₹{stats.incomeMonthly.toLocaleString()}</h2>
+          <h2 className="text-2xl md:text-3xl font-black headline-font text-white">₹{stats.incomeMonthly.toLocaleString()}</h2>
         </div>
       </motion.div>
 
       {/* Major Stats Row */}
-      <motion.div variants={cardVariant} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <motion.div variants={cardVariant} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
         
         {/* Monthly Expenses */}
-        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-error/20 p-6 rounded-2xl relative overflow-hidden group hover:-translate-y-1 transition-transform bg-gradient-to-br from-surface to-error/10">
+        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-error/20 p-4 md:p-6 rounded-2xl relative overflow-hidden group hover:-translate-y-1 transition-transform bg-gradient-to-br from-surface to-error/10">
           <div className="absolute -top-4 -right-4 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
             <span className="material-symbols-outlined text-[100px] text-error">receipt_long</span>
           </div>
           <p className="text-[10px] font-black text-error uppercase tracking-widest mb-1">Monthly Expenses</p>
-          <h2 className="text-3xl font-black headline-font text-white">₹{stats.expenseMonthly.toLocaleString()}</h2>
-          <p className="text-xs text-zinc-500 mt-2 font-medium">₹{stats.expenseAll.toLocaleString()} All-Time</p>
+          <h2 className="text-2xl md:text-3xl font-black headline-font text-white">₹{stats.expenseMonthly.toLocaleString()}</h2>
+          <p className="text-[10px] md:text-xs text-zinc-500 mt-2 font-medium">₹{stats.expenseAll.toLocaleString()} All-Time</p>
         </div>
 
         {/* Net Profit Monthly */}
-        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-tertiary/30 p-6 rounded-2xl relative overflow-hidden group hover:-translate-y-1 transition-transform bg-gradient-to-br from-surface to-tertiary/10">
+        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-tertiary/30 p-4 md:p-6 rounded-2xl relative overflow-hidden group hover:-translate-y-1 transition-transform bg-gradient-to-br from-surface to-tertiary/10">
           <div className="absolute -top-4 -right-4 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
             <span className="material-symbols-outlined text-[100px] text-tertiary">trending_up</span>
           </div>
           <p className="text-[10px] font-black text-tertiary uppercase tracking-widest mb-1">Monthly Net Profit</p>
-          <h2 className="text-3xl font-black headline-font text-white">₹{stats.netProfitMonthly.toLocaleString()}</h2>
-          <p className="text-xs text-zinc-500 mt-2 font-medium">₹{stats.netProfitAll.toLocaleString()} All-Time</p>
+          <h2 className="text-2xl md:text-3xl font-black headline-font text-white">₹{stats.netProfitMonthly.toLocaleString()}</h2>
+          <p className="text-[10px] md:text-xs text-zinc-500 mt-2 font-medium">₹{stats.netProfitAll.toLocaleString()} All-Time</p>
         </div>
 
         {/* Members Status Widget */}
-        <div className="lg:col-span-2 bg-surface-container-low/50 backdrop-blur-xl border border-white/5 p-6 rounded-2xl hover:-translate-y-1 transition-transform">
+        <div className="lg:col-span-2 bg-surface-container-low/50 backdrop-blur-xl border border-white/5 p-4 md:p-6 rounded-2xl hover:-translate-y-1 transition-transform">
           <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Membership Capacity</p>
-          <div className="flex items-end gap-3 mb-2">
-            <h2 className="text-4xl font-black headline-font text-white">{stats.totalMembers.toLocaleString()}</h2>
-            <span className="text-xs font-bold text-zinc-500 mb-1.5 uppercase tracking-wider">Total</span>
+          <div className="flex items-end gap-2 md:gap-3 mb-2">
+            <h2 className="text-3xl md:text-4xl font-black headline-font text-white">{stats.totalMembers.toLocaleString()}</h2>
+            <span className="text-[10px] md:text-xs font-bold text-zinc-500 mb-1.5 uppercase tracking-wider">Total</span>
           </div>
           <div className="mt-4 h-2 w-full bg-zinc-900 rounded-full overflow-hidden flex ring-1 ring-white/5">
             <div className="h-full bg-primary" style={{ width: stats.totalMembers ? `${(stats.activeMembers / stats.totalMembers) * 100}%` : '0%' }}></div>
             <div className="h-full bg-error" style={{ width: stats.totalMembers ? `${(stats.expiredMembers / stats.totalMembers) * 100}%` : '0%' }}></div>
           </div>
-          <div className="flex justify-between mt-3 text-[11px] font-black uppercase tracking-tighter">
+          <div className="flex justify-between mt-3 text-[9px] md:text-[11px] font-black uppercase tracking-tighter">
             <div className="flex items-center gap-1.5 text-primary"><div className="w-2 h-2 rounded-full bg-primary" /> {stats.activeMembers} Active</div>
             <div className="flex items-center gap-1.5 text-error"><div className="w-2 h-2 rounded-full bg-error" /> {stats.expiredMembers} Expired (Pending)</div>
           </div>
@@ -222,12 +222,12 @@ export default function Dashboard() {
 
       </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
         
         {/* Pending / Overdue Members List */}
-        <motion.div variants={cardVariant} className="bg-surface-container-low/50 backdrop-blur-xl border border-white/5 rounded-2xl p-6 relative overflow-hidden">
+        <motion.div variants={cardVariant} className="bg-surface-container-low/50 backdrop-blur-xl border border-white/5 rounded-2xl p-4 md:p-6 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-tertiary via-error to-error"></div>
-          <h3 className="text-sm font-black headline-font uppercase tracking-tight mb-5 flex items-center gap-2 text-white">
+          <h3 className="text-sm font-black headline-font uppercase tracking-tight mb-4 md:mb-5 flex items-center gap-2 text-white">
             <span className="material-symbols-outlined text-[18px] text-error">warning</span> Action Required
           </h3>
           <div className="space-y-3">
@@ -272,9 +272,9 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Recent Transactions List */}
-        <motion.div variants={cardVariant} className="bg-surface-container-low/50 backdrop-blur-xl border border-white/5 rounded-2xl p-6 relative overflow-hidden">
+        <motion.div variants={cardVariant} className="bg-surface-container-low/50 backdrop-blur-xl border border-white/5 rounded-2xl p-4 md:p-6 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-primary/20"></div>
-          <h3 className="text-sm font-black headline-font uppercase tracking-tight mb-5 flex items-center gap-2 text-white">
+          <h3 className="text-sm font-black headline-font uppercase tracking-tight mb-4 md:mb-5 flex items-center gap-2 text-white">
             <span className="material-symbols-outlined text-[18px] text-primary">history</span> Recent Payments
           </h3>
           <div className="space-y-3">

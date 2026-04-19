@@ -106,7 +106,7 @@ export default function Layout() {
         <div className="flex justify-between items-center w-full px-6 py-4">
           <div className="flex items-center gap-4">
             <span className="md:hidden font-['Lexend'] text-2xl font-black italic tracking-tighter text-orange-500">KINETIC</span>
-            <div className="relative hidden sm:block">
+            <div className="relative hidden md:block">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">search</span>
               <input
                 value={memberSearch}
@@ -145,12 +145,12 @@ export default function Layout() {
       </header>
 
       {/* Main Content Canvas */}
-      <main className="md:ml-72 pt-24 pb-20 px-6 lg:px-10 min-h-screen">
+      <main className="md:ml-72 pt-20 md:pt-24 pb-24 md:pb-20 px-3 md:px-6 lg:px-10 min-h-screen">
         <Outlet context={{ memberSearch, setMemberSearch }} />
       </main>
 
       {/* Bottom Navigation for Mobile */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 glass-nav z-50 flex items-center justify-around py-3 px-2 border-t border-zinc-800/50">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 glass-nav z-50 flex items-center justify-around py-4 px-2 border-t border-zinc-800/50 pt-3 pb-safe-bottom min-h-[70px]">
         {navLinks.filter(l => l.name !== 'Settings').map(link => (
           <Link
             key={link.name}

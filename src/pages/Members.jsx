@@ -38,7 +38,7 @@ function calculateExpiryDate(joinDate, planDuration) {
 
 export default function Members() {
   const { currentUser } = useAuth();
-  const { memberSearch } = useOutletContext();
+  const { memberSearch, setMemberSearch } = useOutletContext();
   const [members, setMembers] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRenewModal, setShowRenewModal] = useState(false);
@@ -220,23 +220,38 @@ export default function Members() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-      <div className="flex justify-between items-center mb-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-10 gap-4">
         <div>
-          <h1 className="text-4xl font-black headline-font italic uppercase tracking-tighter text-on-surface">Member Directory</h1>
-          <p className="text-zinc-500 font-medium mt-1">Manage operations and members</p>
+          <h1 className="text-3xl md:text-4xl font-black headline-font italic uppercase tracking-tighter text-on-surface">Member Directory</h1>
+          <p className="text-sm md:text-base text-zinc-500 font-medium mt-1">Manage operations and members</p>
         </div>
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setShowAddModal(true)}
-          className="bg-primary hover:bg-primary-dim text-on-primary px-6 py-3 rounded-xl font-bold shadow-[0_0_15px_rgba(253,139,0,0.3)] transition-colors flex items-center gap-2"
+          className="w-full md:w-auto bg-primary hover:bg-primary-dim text-on-primary px-6 py-3.5 md:py-3 rounded-xl font-bold shadow-[0_0_15px_rgba(253,139,0,0.3)] transition-colors flex items-center justify-center gap-2"
         >
           <span className="material-symbols-outlined text-sm">add</span>
           Add Member
         </motion.button>
       </div>
 
-      <div className="bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 shadow-2xl overflow-hidden">
+      {/* Mobile Search Bar */}
+      <div className="block md:hidden mb-6 mt-2">
+        <div className="relative w-full">
+          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">search</span>
+          <input
+            value={memberSearch}
+            onChange={(e) => setMemberSearch(e.target.value)}
+            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white placeholder-zinc-500"
+            placeholder="Search members..."
+            type="text"
+          />
+        </div>
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 shadow-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
@@ -299,6 +314,55 @@ export default function Members() {
         </div>
       </div>
 
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {members.length === 0 ? (
+          <div className="py-12 text-center text-sm font-medium text-zinc-500">No members registered yet.</div>
+        ) : filteredMembers.length === 0 ? (
+          <div className="py-12 text-center text-sm font-medium text-zinc-500">No members match your search.</div>
+        ) : (
+          <AnimatePresence>
+            {filteredMembers.map((m) => {
+              const status = getStatus(m.expiry_date);
+              return (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  key={m.id}
+                  className="bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 p-5 shadow-lg flex flex-col gap-4"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-lg font-black text-white">{m.name}</h3>
+                      <p className="text-[11px] text-zinc-400 mt-1 font-medium">{m.phone} • {[m.gender, m.age ? `${m.age} yrs` : ''].filter(Boolean).join(', ')}</p>
+                    </div>
+                    <span className={`px-2 py-1 rounded border text-[9px] font-black uppercase tracking-wider ${status.color}`}>{status.label}</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 bg-black/20 p-3 rounded-xl border border-white/5">
+                    <div>
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-none mb-1.5">Plan</p>
+                      <p className="text-sm font-bold text-zinc-200">{m.planType || m.plan}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-none mb-1.5">Expiry</p>
+                      <p className="text-sm font-bold text-zinc-200">{new Date(m.expiry_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 justify-end mt-1">
+                    <button onClick={() => handleDelete(m.id)} className="p-3 bg-error/5 text-error/70 hover:text-error hover:bg-error/10 rounded-xl transition-colors flex-1 flex items-center justify-center border border-error/10"><span className="material-symbols-outlined text-[18px]">delete</span></button>
+                    <button onClick={() => openEdit(m)} className="p-3 bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors flex-1 flex items-center justify-center border border-white/10"><span className="material-symbols-outlined text-[18px]">edit</span></button>
+                    <button onClick={() => openRenewModal(m)} className="py-3 px-4 text-primary hover:text-zinc-950 hover:bg-primary bg-primary/10 rounded-xl transition-colors flex-[2] flex items-center justify-center gap-2 font-black text-sm uppercase tracking-wider border border-primary/20"><span className="material-symbols-outlined text-[18px]">autorenew</span> Renew</button>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        )}
+      </div>
+
       <AnimatePresence>
         {showAddModal && (
           <motion.div
@@ -311,13 +375,13 @@ export default function Members() {
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="bg-surface-container-highest p-8 rounded-2xl w-full max-w-2xl border border-white/5 shadow-2xl relative overflow-hidden"
+              className="bg-surface-container-highest p-6 md:p-8 rounded-2xl w-full max-w-2xl border border-white/5 shadow-2xl relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 p-3">
-                <button onClick={closeModal} className="text-zinc-500 hover:text-white"><span className="material-symbols-outlined">close</span></button>
+                <button onClick={closeModal} className="text-zinc-500 hover:text-white p-2 flex"><span className="material-symbols-outlined">close</span></button>
               </div>
 
-              <h2 className="text-2xl font-black headline-font italic mb-6 text-white uppercase">{editingId ? 'Edit Member' : 'Add New Member'}</h2>
+              <h2 className="text-xl md:text-2xl font-black headline-font italic mb-6 text-white uppercase">{editingId ? 'Edit Member' : 'Add New Member'}</h2>
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
@@ -402,13 +466,13 @@ export default function Members() {
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="bg-surface-container-highest p-8 rounded-2xl w-full max-w-md border border-white/5 shadow-2xl relative overflow-hidden"
+              className="bg-surface-container-highest p-6 md:p-8 rounded-2xl w-full max-w-md border border-white/5 shadow-2xl relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 p-3">
-                <button onClick={closeRenewModal} className="text-zinc-500 hover:text-white"><span className="material-symbols-outlined">close</span></button>
+                <button onClick={closeRenewModal} className="text-zinc-500 hover:text-white p-2 flex"><span className="material-symbols-outlined">close</span></button>
               </div>
 
-              <h2 className="text-2xl font-black headline-font italic mb-2 text-white uppercase">Renew Membership</h2>
+              <h2 className="text-xl md:text-2xl font-black headline-font italic mb-2 text-white uppercase">Renew Membership</h2>
               <p className="text-sm text-zinc-400 mb-6">{renewingMember.name}</p>
 
               <form onSubmit={handleRenewMembership} className="space-y-5">
