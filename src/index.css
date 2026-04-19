@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Inter', sans-serif;
+  }
+  h1, h2, h3, .headline-font {
+    font-family: 'Lexend', sans-serif;
+  }
+}
+
+@layer utilities {
+  .glass-nav {
+    background: rgba(9, 9, 10, 0.7);
+    backdrop-filter: blur(12px);
+  }
+}
