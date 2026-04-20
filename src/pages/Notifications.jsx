@@ -58,15 +58,15 @@ export default function Notifications() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-      <div className="mb-10">
-        <h1 className="text-4xl font-black headline-font italic uppercase tracking-tighter text-on-surface">Notifications</h1>
+      <div className="mb-8 md:mb-10">
+        <h1 className="text-3xl md:text-4xl font-black headline-font italic uppercase tracking-tighter text-on-surface">Notifications</h1>
         <p className="text-zinc-500 font-medium mt-1">Expiring and expired members that need follow-up</p>
       </div>
 
       <div className="bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 shadow-2xl overflow-hidden">
-        <div className="border-b border-outline-variant/10 bg-surface-container/50 px-6 py-5">
+        <div className="border-b border-outline-variant/10 bg-surface-container/50 px-4 py-4 md:px-6 md:py-5">
           <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Alerts</p>
-          <h2 className="text-2xl font-black headline-font text-white mt-2">{notifications.length} Active Notifications</h2>
+          <h2 className="text-xl md:text-2xl font-black headline-font text-white mt-2">{notifications.length} Active Notifications</h2>
         </div>
 
         {notifications.length === 0 ? (
@@ -80,7 +80,7 @@ export default function Notifications() {
               const isExpired = item.type === 'expired';
 
               return (
-                <div key={item.id} className="px-6 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 hover:bg-zinc-800/20 transition-colors">
+                <div key={item.id} className="px-4 py-4 md:px-6 md:py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 hover:bg-zinc-800/20 transition-colors">
                   <div>
                     <div className="flex items-center gap-3 flex-wrap">
                       <p className="text-white font-bold text-lg">{item.memberName}</p>

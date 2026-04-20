@@ -241,13 +241,13 @@ export default function Payments() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 overflow-y-auto p-4 py-6"
           >
             <motion.div
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="bg-surface-container-highest p-6 md:p-8 rounded-2xl w-full max-w-md border border-white/5 shadow-2xl relative overflow-hidden"
+              className="bg-surface-container-highest p-5 md:p-8 rounded-2xl w-full max-w-md max-h-[calc(100vh-3rem)] overflow-y-auto border border-white/5 shadow-2xl relative"
             >
               <div className="absolute top-0 right-0 p-3">
                 <button onClick={() => {
@@ -296,7 +296,7 @@ export default function Payments() {
                 </div>
 
                 {isMembershipPayment ? null : (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Supplement</label>
                       <input required value={newPayment.supplementName} onChange={(e) => setNewPayment({ ...newPayment, supplementName: e.target.value })} placeholder="Protein, creatine..." className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all" />
@@ -314,7 +314,7 @@ export default function Payments() {
                 </div>
 
                 {selectedMember && isMembershipPayment && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="rounded-lg border border-white/5 bg-zinc-950/60 px-4 py-3">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Current Plan</p>
                       <p className="mt-1 text-sm font-bold text-white">{selectedMember.planType}</p>

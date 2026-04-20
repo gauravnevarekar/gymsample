@@ -260,7 +260,7 @@ export default function Dashboard() {
       {/* Header */}
       <motion.div variants={cardVariant} className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-10 gap-2 md:gap-4">
         <div>
-          <h1 className="text-3xl md:text-5xl font-black headline-font italic tracking-tighter text-on-surface uppercase drop-shadow-lg">Dashboard</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black headline-font italic tracking-tighter text-on-surface uppercase drop-shadow-lg">Dashboard</h1>
           <p className="text-sm md:text-base text-zinc-400 mt-1 font-medium tracking-wide">Live performance indicators</p>
         </div>
       </motion.div>
@@ -405,19 +405,19 @@ export default function Dashboard() {
                 const isExpired = m.pendingStatus === 'Expired';
                 
                 return (
-                  <div key={m.id} className={`flex justify-between items-center p-3 rounded-lg border transition-colors ${
+                  <div key={m.id} className={`flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg border transition-colors ${
                     isExpired 
                       ? 'bg-error/5 border-error/10 hover:bg-error/10' 
                       : 'bg-tertiary/5 border-tertiary/10 hover:bg-tertiary/10'
                   }`}>
-                    <div>
+                    <div className="min-w-0">
                       <h4 className="text-sm font-bold text-white flex items-center gap-2">
                         {m.name}
                         <span className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded ${isExpired ? 'bg-error text-zinc-950' : 'bg-tertiary text-zinc-950'}`}>
                           {m.pendingStatus}
                         </span>
                       </h4>
-                      <p className={`text-[10px] font-medium mt-0.5 ${isExpired ? 'text-error/80' : 'text-tertiary/80'}`}>
+                      <p className={`text-[10px] font-medium mt-0.5 break-words ${isExpired ? 'text-error/80' : 'text-tertiary/80'}`}>
                         {m.phone} • {isExpired ? `Expired on ${new Date(m.expiry_date).toLocaleDateString()}` : `Expiring in ${m.diffDays} days`}
                       </p>
                     </div>
@@ -449,12 +449,12 @@ export default function Dashboard() {
               <p className="text-sm text-zinc-500 font-medium">No recent transactions recorded.</p>
             ) : (
               transactions.map(tx => (
-                <div key={tx.id} className="flex justify-between items-center p-3 rounded-lg bg-surface border border-white/5 hover:bg-white/5 transition-colors">
-                  <div>
+                <div key={tx.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg bg-surface border border-white/5 hover:bg-white/5 transition-colors">
+                  <div className="min-w-0">
                     <h4 className="text-sm font-bold text-white">{tx.member_name}</h4>
-                    <p className="text-[10px] text-zinc-400 font-medium">{new Date(tx.date).toLocaleDateString()} • {tx.method}</p>
+                    <p className="text-[10px] text-zinc-400 font-medium break-words">{new Date(tx.date).toLocaleDateString()} • {tx.method}</p>
                   </div>
-                  <span className="text-primary font-black text-sm">+₹{tx.amount.toFixed(2)}</span>
+                  <span className="text-primary font-black text-sm sm:text-right">+₹{tx.amount.toFixed(2)}</span>
                 </div>
               ))
             )}

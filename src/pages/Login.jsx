@@ -26,15 +26,15 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col justify-center py-12 sm:px-6 lg:px-8 text-on-surface">
+    <div className="min-h-screen bg-surface flex flex-col justify-center px-4 py-8 sm:px-6 lg:px-8 text-on-surface">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="font-['Lexend'] font-black text-orange-500 text-5xl tracking-widest mb-2 italic">GYMFLOW</div>
+        <div className="font-['Lexend'] font-black text-orange-500 text-4xl sm:text-5xl tracking-widest mb-2 italic">GYMFLOW</div>
         <h2 className="mt-6 text-center text-xl font-bold tracking-tight text-white uppercase">
           Sign in to Dashboard
         </h2>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+      <div className="mt-8 w-full sm:mx-auto sm:max-w-md">
         <div className="bg-surface-container-low py-8 px-4 shadow sm:rounded-xl sm:px-10 border border-outline-variant/10">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && <div className="bg-error/10 text-error p-3 rounded text-sm text-center">{error}</div>}

@@ -70,8 +70,8 @@ export default function Settings() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-      <div className="mb-10">
-        <h1 className="text-4xl font-black headline-font italic uppercase tracking-tighter text-on-surface">Settings</h1>
+      <div className="mb-8 md:mb-10">
+        <h1 className="text-3xl md:text-4xl font-black headline-font italic uppercase tracking-tighter text-on-surface">Settings</h1>
         <p className="text-zinc-500 font-medium mt-1">Manage your gym profile and account access</p>
       </div>
 

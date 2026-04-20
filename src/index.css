@@ -3,9 +3,22 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    font-family: 'Inter', sans-serif;
+  html {
+    min-height: 100%;
+    overflow-x: hidden;
   }
+
+  body {
+    min-height: 100vh;
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
   h1, h2, h3, .headline-font {
     font-family: 'Lexend', sans-serif;
   }
@@ -36,5 +49,13 @@
   .glass-nav {
     background: rgba(9, 9, 10, 0.7);
     backdrop-filter: blur(12px);
+  }
+
+  .pb-safe-bottom {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  .pt-safe-top {
+    padding-top: env(safe-area-inset-top);
   }
 }

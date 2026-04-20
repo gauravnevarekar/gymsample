@@ -487,15 +487,15 @@ export default function Members() {
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="text-lg font-black text-white">{m.name}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <p className="text-[11px] text-zinc-400 font-medium">{m.phone} | {[m.gender, m.age ? `${m.age} yrs` : ''].filter(Boolean).join(', ')}</p>
+                      <div className="flex items-start gap-2 mt-1">
+                        <p className="text-[11px] text-zinc-400 font-medium break-words">{m.phone} | {[m.gender, m.age ? `${m.age} yrs` : ''].filter(Boolean).join(', ')}</p>
                         <WhatsAppIcon phone={m.phone} />
                       </div>
                     </div>
                     <span className={`px-2 py-1 rounded border text-[9px] font-black uppercase tracking-wider ${status.color}`}>{status.label}</span>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3 bg-black/20 p-3 rounded-xl border border-white/5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-black/20 p-3 rounded-xl border border-white/5">
                     <div>
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-none mb-1.5">Plan</p>
                       <p className="text-sm font-bold text-zinc-200">{m.planType || m.plan}</p>
@@ -526,13 +526,13 @@ export default function Members() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 overflow-y-auto p-4 py-6"
           >
             <motion.div
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="bg-surface-container-highest p-6 md:p-8 rounded-2xl w-full max-w-2xl border border-white/5 shadow-2xl relative overflow-hidden"
+              className="bg-surface-container-highest p-5 md:p-8 rounded-2xl w-full max-w-2xl max-h-[calc(100vh-3rem)] overflow-y-auto border border-white/5 shadow-2xl relative"
             >
               <div className="absolute top-0 right-0 p-3">
                 <button onClick={closeModal} className="text-zinc-500 hover:text-white p-2 flex"><span className="material-symbols-outlined">close</span></button>
@@ -633,7 +633,7 @@ export default function Members() {
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="bg-surface-container-highest p-6 md:p-8 rounded-2xl w-full max-w-md border border-white/5 shadow-2xl relative overflow-hidden"
+              className="bg-surface-container-highest p-5 md:p-8 rounded-2xl w-full max-w-md max-h-[calc(100vh-3rem)] overflow-y-auto border border-white/5 shadow-2xl relative"
             >
               <div className="absolute top-0 right-0 p-3">
                 <button onClick={closeRenewModal} className="text-zinc-500 hover:text-white p-2 flex"><span className="material-symbols-outlined">close</span></button>
@@ -643,7 +643,7 @@ export default function Members() {
               <p className="text-sm text-zinc-400 mb-6">{renewingMember.name}</p>
 
               <form onSubmit={handleRenewMembership} className="space-y-5">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="rounded-lg border border-white/5 bg-zinc-950/60 px-4 py-3">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Plan</p>
                     <select
@@ -708,13 +708,13 @@ export default function Members() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 overflow-y-auto p-4 py-6"
           >
             <motion.div
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="bg-surface-container-highest p-6 md:p-8 rounded-2xl w-full max-w-2xl border border-white/5 shadow-2xl relative overflow-hidden"
+              className="bg-surface-container-highest p-5 md:p-8 rounded-2xl w-full max-w-2xl max-h-[calc(100vh-3rem)] overflow-y-auto border border-white/5 shadow-2xl relative"
             >
               <div className="absolute top-0 right-0 p-3">
                 <button onClick={closeHistoryModal} className="text-zinc-500 hover:text-white p-2 flex"><span className="material-symbols-outlined">close</span></button>
@@ -730,7 +730,7 @@ export default function Members() {
                   </div>
                 ) : (
                   selectedMemberPayments.map((payment) => (
-                    <div key={payment.id} className="rounded-xl border border-white/5 bg-zinc-950/50 px-4 py-4 flex items-center justify-between gap-4">
+                    <div key={payment.id} className="rounded-xl border border-white/5 bg-zinc-950/50 px-4 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-sm font-bold text-white">{payment.category || 'Membership'}{payment.plan_type ? ` | ${payment.plan_type}` : ''}{payment.supplement_name ? ` | ${payment.supplement_name}` : ''}{payment.payment_phase ? ` | ${payment.payment_phase}` : ''}</p>
                         <p className="mt-1 text-xs text-zinc-400">{formatDisplayDate(payment.date)} | {payment.method}</p>

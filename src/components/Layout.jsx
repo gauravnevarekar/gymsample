@@ -9,7 +9,6 @@ export default function Layout() {
   const { currentUser, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   const [memberSearch, setMemberSearch] = useState('');
 
@@ -66,7 +65,7 @@ export default function Layout() {
   }
 
   return (
-    <div className="bg-surface text-on-surface selection:bg-primary selection:text-on-primary min-h-screen">
+    <div className="bg-surface text-on-surface selection:bg-primary selection:text-on-primary min-h-screen overflow-x-hidden">
       {/* SideNavBar */}
       <aside className="hidden md:flex flex-col h-full w-72 fixed left-0 top-0 overflow-y-auto bg-zinc-950 z-50">
         <div className="flex flex-col h-full gap-2 py-8">
@@ -102,10 +101,10 @@ export default function Layout() {
       </aside>
 
       {/* TopNavBar */}
-      <header className="fixed top-0 right-0 left-0 md:left-72 z-40 bg-zinc-950/70 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
-        <div className="flex justify-between items-center w-full px-6 py-4">
-          <div className="flex items-center gap-4">
-            <span className="md:hidden font-['Lexend'] text-2xl font-black italic tracking-tighter text-orange-500">GYMFLOW</span>
+      <header className="fixed top-0 right-0 left-0 md:left-72 z-40 bg-zinc-950/70 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] pt-safe-top">
+        <div className="flex justify-between items-center w-full gap-3 px-3 py-3 sm:px-4 md:px-6 md:py-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="md:hidden font-['Lexend'] text-xl sm:text-2xl font-black italic tracking-tighter text-orange-500 truncate">GYMFLOW</span>
             <div className="relative hidden md:block">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">search</span>
               <input
@@ -117,11 +116,11 @@ export default function Layout() {
               />
             </div>
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 sm:gap-4 md:gap-6">
             <Link
               to="/notifications"
               className={clsx(
-                "relative transition-colors",
+                "relative transition-colors shrink-0",
                 location.pathname === '/notifications' ? "text-orange-500" : "text-zinc-400 hover:text-orange-500"
               )}
             >
@@ -132,36 +131,40 @@ export default function Layout() {
                 </span>
               )}
             </Link>
-            <div className="flex items-center gap-3 pl-6 border-l border-zinc-800">
+            <Link
+              to="/settings"
+              className="flex items-center gap-2 pl-3 sm:pl-4 md:pl-6 border-l border-zinc-800 min-w-0"
+            >
               <div className="text-right hidden sm:block">
                 <p className="text-xs font-bold text-on-surface">Gym Admin</p>
+                <p className="text-[10px] uppercase tracking-widest text-zinc-500">Settings</p>
               </div>
               <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-700 text-white">
                 <span className="material-symbols-outlined">person</span>
               </div>
-            </div>
+            </Link>
           </div>
         </div>
       </header>
 
       {/* Main Content Canvas */}
-      <main className="md:ml-72 pt-20 md:pt-24 pb-24 md:pb-20 px-3 md:px-6 lg:px-10 min-h-screen">
+      <main className="md:ml-72 pt-20 md:pt-24 pb-28 md:pb-20 px-3 sm:px-4 md:px-6 lg:px-10 min-h-screen">
         <Outlet context={{ memberSearch, setMemberSearch }} />
       </main>
 
       {/* Bottom Navigation for Mobile */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 glass-nav z-50 flex items-center justify-around py-4 px-2 border-t border-zinc-800/50 pt-3 pb-safe-bottom min-h-[70px]">
-        {navLinks.filter(l => l.name !== 'Settings').map(link => (
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 glass-nav z-50 grid grid-cols-5 items-center px-1 border-t border-zinc-800/50 pt-3 pb-safe-bottom min-h-[72px]">
+        {navLinks.map((link) => (
           <Link
             key={link.name}
             to={link.path}
             className={clsx(
-              "flex flex-col items-center gap-1",
+              "flex min-w-0 flex-col items-center gap-1 px-1 text-center",
               location.pathname === link.path ? "text-orange-500" : "text-zinc-500"
             )}
           >
             <span className="material-symbols-outlined" style={{ fontVariationSettings: location.pathname === link.path ? "'FILL' 1" : undefined }}>{link.icon}</span>
-            <span className="text-[10px] font-bold uppercase tracking-tighter">{link.name}</span>
+            <span className="text-[9px] font-bold uppercase tracking-tight leading-none">{link.name}</span>
           </Link>
         ))}
       </nav>
