@@ -1,9 +1,26 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, Component } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { isToday, isThisWeek, isThisMonth, parseISO } from 'date-fns';
+import { isToday, isThisWeek, isThisMonth, parseISO, format, subMonths } from 'date-fns';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
+
+class ChartErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return <div className="text-red-500 font-bold p-4 bg-red-500/10 rounded-xl whitespace-pre-wrap">Chart failed to load: {this.state.error?.message}</div>;
+    }
+    return this.props.children;
+  }
+}
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
@@ -27,6 +44,10 @@ export default function Dashboard() {
 
   const [pendingMembers, setPendingMembers] = useState([]);
   const [transactions, setTransactions] = useState([]);
+
+  const [allPayments, setAllPayments] = useState([]);
+  const [allExpenses, setAllExpenses] = useState([]);
+  const [allMembers, setAllMembers] = useState([]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -61,6 +82,10 @@ export default function Dashboard() {
       // Sort pendings by how far overdue or closest to expiry
       pendings.sort((a,b) => new Date(a.expiry_date) - new Date(b.expiry_date));
       
+      const membersData = [];
+      snapshot.forEach(doc => membersData.push({ id: doc.id, ...doc.data() }));
+      setAllMembers(membersData);
+
       setPendingMembers(pendings);
       setStats(s => ({ ...s, totalMembers: total, activeMembers: active, expiredMembers: expired }));
     });
@@ -84,6 +109,7 @@ export default function Dashboard() {
         txs.push({ id: doc.id, ...data });
       });
       
+      setAllPayments(txs);
       txs.sort((a,b) => new Date(b.date) - new Date(a.date));
       setTransactions(txs.slice(0, 5));
       
@@ -112,6 +138,10 @@ export default function Dashboard() {
         if (isThisMonth(d)) expM += amount;
       });
 
+      const exps = [];
+      snapshot.forEach(doc => exps.push({ id: doc.id, ...doc.data() }));
+      setAllExpenses(exps);
+
       setStats(s => ({ 
         ...s, 
         expenseMonthly: expM, 
@@ -127,6 +157,77 @@ export default function Dashboard() {
       unsubscribeExp();
     };
   }, [currentUser]);
+
+  const { financialChartData, memberChartData } = useMemo(() => {
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      months.push(format(subMonths(new Date(), i), 'MMM yyyy'));
+    }
+    
+    const finMap = {};
+    const memMap = {};
+
+    months.forEach(m => {
+      finMap[m] = { name: m, Income: 0, Expense: 0, Profit: 0 };
+      memMap[m] = { name: m, 'New Members': 0 };
+    });
+
+    allPayments.forEach(p => {
+      if (!p.date) return;
+      try {
+        const d = parseISO(p.date);
+        if (isNaN(d.getTime())) return;
+        const m = format(d, 'MMM yyyy');
+        if (finMap[m]) finMap[m].Income += Number(p.amount) || 0;
+      } catch (e) {
+        console.warn('Invalid payment date', p);
+      }
+    });
+
+    allExpenses.forEach(e => {
+      if (!e.date) return;
+      try {
+        const d = parseISO(e.date);
+        if (isNaN(d.getTime())) return;
+        const m = format(d, 'MMM yyyy');
+        if (finMap[m]) finMap[m].Expense += Number(e.amount) || 0;
+      } catch (e) {
+        console.warn('Invalid expense date', e);
+      }
+    });
+
+    const sortedMembers = [...allMembers].sort((a,b) => {
+      const dA = new Date(a.join_date || a.created_at || '2000-01-01').getTime();
+      const dB = new Date(b.join_date || b.created_at || '2000-01-01').getTime();
+      return (isNaN(dA) ? 0 : dA) - (isNaN(dB) ? 0 : dB);
+    });
+
+    sortedMembers.forEach(m => {
+      if (!m.join_date && !m.created_at) return;
+      try {
+        // created_at from firestore could be a timestamp object.
+        // Let's coerce it or catch invalid string parses.
+        let dateVal = m.join_date || m.created_at;
+        if (typeof dateVal !== 'string' && dateVal?.toDate) {
+            dateVal = dateVal.toDate();
+        }
+        const d = new Date(dateVal);
+        if (isNaN(d.getTime())) return;
+        const mStr = format(d, 'MMM yyyy');
+        if (memMap[mStr]) memMap[mStr]['New Members'] += 1;
+      } catch (e) {
+        console.warn('Invalid member date', m);
+      }
+    });
+
+    const fData = months.map(m => {
+      finMap[m].Profit = finMap[m].Income - finMap[m].Expense;
+      return finMap[m];
+    });
+    const mData = months.map(m => memMap[m]);
+
+    return { financialChartData: fData, memberChartData: mData };
+  }, [allPayments, allExpenses, allMembers]);
 
   // WhatsApp Handler
   const handleWhatsAppClick = (member) => {
@@ -217,6 +318,72 @@ export default function Dashboard() {
           <div className="flex justify-between mt-3 text-[9px] md:text-[11px] font-black uppercase tracking-tighter">
             <div className="flex items-center gap-1.5 text-primary"><div className="w-2 h-2 rounded-full bg-primary" /> {stats.activeMembers} Active</div>
             <div className="flex items-center gap-1.5 text-error"><div className="w-2 h-2 rounded-full bg-error" /> {stats.expiredMembers} Expired (Pending)</div>
+          </div>
+        </div>
+
+      </motion.div>
+
+      {/* Charts Row */}
+      <motion.div variants={cardVariant} className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8 mb-10">
+        
+        {/* Financial Chart */}
+        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-white/5 rounded-2xl p-4 md:p-6 shadow-xl">
+          <h3 className="text-sm font-black headline-font uppercase tracking-tight mb-6 flex items-center gap-2 text-white">
+            <span className="material-symbols-outlined text-[18px] text-tertiary">monitoring</span>
+            Financial Overview
+          </h3>
+          <div className="h-64 md:h-80 w-full text-xs">
+            <ChartErrorBoundary>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={financialChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#4ade80" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#4ade80" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                  <XAxis dataKey="name" stroke="#52525b" tick={{ fill: '#a1a1aa' }} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#52525b" tick={{ fill: '#a1a1aa' }} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val/1000}k`} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '12px' }}
+                    itemStyle={{ fontWeight: 'bold' }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                  <Area type="monotone" dataKey="Income" stroke="#4ade80" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" />
+                  <Area type="monotone" dataKey="Profit" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorProfit)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </ChartErrorBoundary>
+          </div>
+        </div>
+
+        {/* Members Growth Chart */}
+        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-white/5 rounded-2xl p-4 md:p-6 shadow-xl">
+          <h3 className="text-sm font-black headline-font uppercase tracking-tight mb-6 flex items-center gap-2 text-white">
+            <span className="material-symbols-outlined text-[18px] text-primary">groups</span>
+            New Members Growth
+          </h3>
+          <div className="h-64 md:h-80 w-full text-xs">
+            <ChartErrorBoundary>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={memberChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                  <XAxis dataKey="name" stroke="#52525b" tick={{ fill: '#a1a1aa' }} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#52525b" tick={{ fill: '#a1a1aa' }} tickLine={false} axisLine={false} />
+                  <Tooltip 
+                    cursor={{ fill: '#27272a', opacity: 0.4 }}
+                    contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '12px' }}
+                    itemStyle={{ fontWeight: 'bold', color: '#fb923c' }}
+                  />
+                  <Bar dataKey="New Members" fill="#fb923c" radius={[4, 4, 0, 0]} barSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartErrorBoundary>
           </div>
         </div>
 

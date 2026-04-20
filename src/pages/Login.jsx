@@ -28,7 +28,7 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-surface flex flex-col justify-center py-12 sm:px-6 lg:px-8 text-on-surface">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="font-['Lexend'] font-black text-orange-500 text-5xl tracking-widest mb-2 italic">KINETIC</div>
+        <div className="font-['Lexend'] font-black text-orange-500 text-5xl tracking-widest mb-2 italic">GYMFLOW</div>
         <h2 className="mt-6 text-center text-xl font-bold tracking-tight text-white uppercase">
           Sign in to Dashboard
         </h2>

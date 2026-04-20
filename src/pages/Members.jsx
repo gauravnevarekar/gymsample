@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
+import { buildMembershipFinancials, formatCurrency, formatDisplayDate } from '../lib/formatters';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -19,6 +20,7 @@ function createInitialFormData() {
     age: '',
     planType: 'Monthly',
     planPrice: '',
+    initialPaid: '',
     planDuration: PLAN_OPTIONS.Monthly.durationDays,
     joinDate: new Date().toISOString().split('T')[0]
   };
@@ -36,30 +38,85 @@ function calculateExpiryDate(joinDate, planDuration) {
   return expiryDate.toISOString().split('T')[0];
 }
 
+function getPlanConfig(planType) {
+  return PLAN_OPTIONS[planType] || PLAN_OPTIONS.Monthly;
+}
+
+const WhatsAppIcon = ({ phone }) => {
+  if (!phone) return null;
+  const num = String(phone).replace(/\D/g, '');
+  const waNum = num.length === 10 ? '91' + num : num;
+  return (
+    <a
+      href={`https://wa.me/${waNum}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className="text-green-500 hover:text-green-400 transition-colors inline-flex items-center ml-2"
+      title="Message on WhatsApp"
+    >
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.888-.788-1.489-1.761-1.663-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+      </svg>
+    </a>
+  );
+};
+
 export default function Members() {
   const { currentUser } = useAuth();
   const { memberSearch, setMemberSearch } = useOutletContext();
   const [members, setMembers] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRenewModal, setShowRenewModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formError, setFormError] = useState('');
   const [formData, setFormData] = useState(createInitialFormData());
   const [renewingMember, setRenewingMember] = useState(null);
-  const [renewalData, setRenewalData] = useState({ amount: '', method: 'Cash' });
+  const [selectedHistoryMember, setSelectedHistoryMember] = useState(null);
+  const [payments, setPayments] = useState([]);
+  const [renewalData, setRenewalData] = useState({ amount: '', method: 'Cash', planType: 'Monthly' });
+  const [renewError, setRenewError] = useState('');
 
   useEffect(() => {
     if (!currentUser) return;
     const membersRef = collection(db, 'gyms', currentUser.uid, 'members');
-    const unsubscribe = onSnapshot(membersRef, (snapshot) => {
+    const paymentsRef = collection(db, 'gyms', currentUser.uid, 'payments');
+
+    const unsubscribeMembers = onSnapshot(membersRef, (snapshot) => {
       const list = [];
       snapshot.forEach((memberDoc) => {
-        list.push({ id: memberDoc.id, ...memberDoc.data() });
+        const data = memberDoc.data();
+        const financials = buildMembershipFinancials(
+          data.planPrice,
+          data.amountPaid ?? data.planPrice ?? 0
+        );
+
+        list.push({
+          id: memberDoc.id,
+          ...data,
+          amountPaid: data.amountPaid ?? financials.amountPaid,
+          balanceDue: data.balanceDue ?? financials.balanceDue,
+          paymentStatus: data.paymentStatus || financials.paymentStatus
+        });
       });
       list.sort((a, b) => new Date(a.expiry_date) - new Date(b.expiry_date));
       setMembers(list);
     });
-    return unsubscribe;
+
+    const unsubscribePayments = onSnapshot(paymentsRef, (snapshot) => {
+      const list = [];
+      snapshot.forEach((paymentDoc) => {
+        list.push({ id: paymentDoc.id, ...paymentDoc.data() });
+      });
+      list.sort((a, b) => new Date(b.date) - new Date(a.date));
+      setPayments(list);
+    });
+
+    return () => {
+      unsubscribeMembers();
+      unsubscribePayments();
+    };
   }, [currentUser]);
 
   const computedExpiryDate = calculateExpiryDate(formData.joinDate, formData.planDuration);
@@ -74,7 +131,13 @@ export default function Members() {
   function closeRenewModal() {
     setShowRenewModal(false);
     setRenewingMember(null);
-    setRenewalData({ amount: '', method: 'Cash' });
+    setRenewalData({ amount: '', method: 'Cash', planType: 'Monthly' });
+    setRenewError('');
+  }
+
+  function closeHistoryModal() {
+    setShowHistoryModal(false);
+    setSelectedHistoryMember(null);
   }
 
   function handlePlanTypeChange(value) {
@@ -114,13 +177,49 @@ export default function Members() {
         expiry_date: calculateExpiryDate(formData.joinDate, formData.planDuration)
       };
 
+      if (!editingId && formData.initialPaid !== '' && Number(formData.initialPaid) > payload.planPrice) {
+        setFormError('Amount received now cannot be more than the plan fee.');
+        return;
+      }
+
       if (editingId) {
-        await updateDoc(doc(db, 'gyms', currentUser.uid, 'members', editingId), payload);
-      } else {
-        await addDoc(collection(db, 'gyms', currentUser.uid, 'members'), {
+        const existingMember = members.find((member) => member.id === editingId);
+        const financials = buildMembershipFinancials(
+          payload.planPrice,
+          existingMember?.amountPaid ?? payload.planPrice
+        );
+
+        await updateDoc(doc(db, 'gyms', currentUser.uid, 'members', editingId), {
           ...payload,
+          amountPaid: existingMember?.amountPaid ?? financials.amountPaid,
+          balanceDue: financials.balanceDue,
+          paymentStatus: financials.paymentStatus
+        });
+      } else {
+        const initialPaid = formData.initialPaid === '' ? payload.planPrice : Number(formData.initialPaid);
+        const financials = buildMembershipFinancials(payload.planPrice, initialPaid);
+        const memberRef = await addDoc(collection(db, 'gyms', currentUser.uid, 'members'), {
+          ...payload,
+          amountPaid: financials.amountPaid,
+          balanceDue: financials.balanceDue,
+          paymentStatus: financials.paymentStatus,
           created_at: new Date().toISOString()
         });
+
+        if (financials.amountPaid > 0) {
+          await addDoc(collection(db, 'gyms', currentUser.uid, 'payments'), {
+            memberId: memberRef.id,
+            member_name: payload.name,
+            amount: financials.amountPaid,
+            method: 'Cash',
+            category: 'Membership',
+            plan_type: payload.planType,
+            immutable: true,
+            balance_after: financials.balanceDue,
+            payment_phase: 'Initial',
+            date: new Date().toISOString()
+          });
+        }
       }
 
       closeModal();
@@ -143,6 +242,7 @@ export default function Members() {
       age: member.age ?? '',
       planType: existingPlanType,
       planPrice: member.planPrice ?? '',
+      initialPaid: '',
       planDuration: Number(member.planDuration || fallbackPlan.durationDays),
       joinDate: member.join_date || new Date().toISOString().split('T')[0]
     });
@@ -150,12 +250,21 @@ export default function Members() {
   };
 
   const openRenewModal = (member) => {
+    const existingPlanType = member.planType || member.plan || 'Monthly';
+
     setRenewingMember(member);
     setRenewalData({
       amount: member.planPrice ? String(member.planPrice) : '',
-      method: 'Cash'
+      method: 'Cash',
+      planType: existingPlanType
     });
+    setRenewError('');
     setShowRenewModal(true);
+  };
+
+  const openHistoryModal = (member) => {
+    setSelectedHistoryMember(member);
+    setShowHistoryModal(true);
   };
 
   const handleDelete = async (id) => {
@@ -169,23 +278,47 @@ export default function Members() {
     if (!renewingMember) return;
 
     try {
+      const selectedPlan = getPlanConfig(renewalData.planType);
       const memberRef = doc(db, 'gyms', currentUser.uid, 'members', renewingMember.id);
       const now = new Date();
       const currentExpiry = new Date(renewingMember.expiry_date);
       const baseDate = currentExpiry < now ? now : currentExpiry;
       const renewedExpiry = new Date(baseDate);
-      renewedExpiry.setDate(renewedExpiry.getDate() + Number(renewingMember.planDuration || 30));
+      renewedExpiry.setDate(renewedExpiry.getDate() + Number(selectedPlan.durationDays));
+      const financials = buildMembershipFinancials(renewingMember.planPrice, renewalData.amount);
+
+      if (Number(renewalData.amount || 0) > Number(renewingMember.planPrice || 0)) {
+        setRenewError('Amount received cannot be more than the plan fee.');
+        return;
+      }
+
+      const confirmation = window.confirm(
+        `Confirm ${renewalData.planType.toLowerCase()} renewal for ${renewingMember.name} for ${formatCurrency(renewalData.amount)}? This payment cannot be edited later.`
+      );
+
+      if (!confirmation) return;
 
       await addDoc(collection(db, 'gyms', currentUser.uid, 'payments'), {
         memberId: renewingMember.id,
         member_name: renewingMember.name,
         amount: Number(renewalData.amount),
         method: renewalData.method,
-        plan_type: renewingMember.planType || renewingMember.plan || 'Monthly',
+        category: 'Membership',
+        plan_type: renewalData.planType,
+        immutable: true,
+        balance_after: financials.balanceDue,
+        payment_phase: financials.balanceDue > 0 ? 'Partial Renewal' : 'Renewal',
         date: new Date().toISOString()
       });
 
       await updateDoc(memberRef, {
+        plan: renewalData.planType,
+        planType: renewalData.planType,
+        planDuration: selectedPlan.durationDays,
+        planPrice: Number(renewingMember.planPrice),
+        amountPaid: financials.amountPaid,
+        balanceDue: financials.balanceDue,
+        paymentStatus: financials.paymentStatus,
         expiry_date: renewedExpiry.toISOString().split('T')[0]
       });
 
@@ -199,8 +332,8 @@ export default function Members() {
     const now = new Date();
     const exp = new Date(expiryDate);
     return exp >= now
-      ? { label: 'Active', color: 'text-primary bg-primary/10 border-primary/20' }
-      : { label: 'Expired', color: 'text-error bg-error/10 border-error/20' };
+      ? { label: 'Active', color: 'text-green-400 bg-green-500/10 border-green-500/20' }
+      : { label: 'Expired', color: 'text-red-400 bg-red-500/10 border-red-500/20' };
   };
 
   const filteredMembers = members.filter((member) => {
@@ -217,6 +350,10 @@ export default function Members() {
       member.expiry_date
     ].some((value) => String(value || '').toLowerCase().includes(query));
   });
+
+  const selectedMemberPayments = selectedHistoryMember
+    ? payments.filter((payment) => payment.memberId === selectedHistoryMember.id)
+    : [];
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
@@ -273,7 +410,10 @@ export default function Members() {
               ) : (
                 <AnimatePresence>
                   {filteredMembers.map((m) => {
-                    const status = getStatus(m.expiry_date);
+                    const baseStatus = getStatus(m.expiry_date);
+                    const status = baseStatus.label === 'Active' && m.balanceDue > 0
+                      ? { label: 'Partial', color: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/20' }
+                      : baseStatus;
                     return (
                       <motion.tr
                         initial={{ opacity: 0 }}
@@ -283,7 +423,12 @@ export default function Members() {
                         className="hover:bg-zinc-800/30 transition-colors group cursor-default"
                       >
                         <td className="py-4 px-6 font-medium text-white">{m.name}</td>
-                        <td className="py-4 px-6 text-sm text-zinc-400">{m.phone}</td>
+                        <td className="py-4 px-6 text-sm text-zinc-400">
+                          <div className="flex items-center">
+                            {m.phone}
+                            <WhatsAppIcon phone={m.phone} />
+                          </div>
+                        </td>
                         <td className="py-4 px-6 text-sm text-zinc-400">
                           {[m.gender, m.age ? `${m.age} yrs` : ''].filter(Boolean).join(' | ') || '-'}
                         </td>
@@ -292,13 +437,17 @@ export default function Members() {
                           <div className="text-xs font-medium text-zinc-500">
                             {m.planPrice ? `Rs ${Number(m.planPrice).toLocaleString()}` : 'Price not set'}
                           </div>
+                          <div className="text-xs font-medium text-zinc-500">
+                            Paid {formatCurrency(m.amountPaid)} | Due {formatCurrency(m.balanceDue)}
+                          </div>
                         </td>
                         <td className="py-4 px-6 text-center">
                           <span className={`px-2.5 py-1 rounded border text-[10px] font-black uppercase tracking-wider ${status.color}`}>{status.label}</span>
                         </td>
-                        <td className="py-4 px-6 text-sm font-medium text-zinc-400">{new Date(m.expiry_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                        <td className="py-4 px-6 text-sm font-medium text-zinc-400">{formatDisplayDate(m.expiry_date)}</td>
                         <td className="py-4 px-6 text-right">
                           <div className="flex gap-3 justify-end items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => openHistoryModal(m)} className="text-zinc-400 hover:text-white transition-colors text-xs font-bold flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">receipt_long</span> History</button>
                             <button onClick={() => openRenewModal(m)} className="text-primary hover:text-white transition-colors text-xs font-bold flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">autorenew</span> Renew</button>
                             <button onClick={() => openEdit(m)} className="text-zinc-400 hover:text-white transition-colors text-xs font-bold flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">edit</span> Edit</button>
                             <button onClick={() => handleDelete(m.id)} className="text-error/70 hover:text-error transition-colors text-xs font-bold flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">delete</span> Delete</button>
@@ -323,7 +472,10 @@ export default function Members() {
         ) : (
           <AnimatePresence>
             {filteredMembers.map((m) => {
-              const status = getStatus(m.expiry_date);
+              const baseStatus = getStatus(m.expiry_date);
+              const status = baseStatus.label === 'Active' && m.balanceDue > 0
+                ? { label: 'Partial', color: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/20' }
+                : baseStatus;
               return (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -335,7 +487,10 @@ export default function Members() {
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="text-lg font-black text-white">{m.name}</h3>
-                      <p className="text-[11px] text-zinc-400 mt-1 font-medium">{m.phone} • {[m.gender, m.age ? `${m.age} yrs` : ''].filter(Boolean).join(', ')}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-[11px] text-zinc-400 font-medium">{m.phone} | {[m.gender, m.age ? `${m.age} yrs` : ''].filter(Boolean).join(', ')}</p>
+                        <WhatsAppIcon phone={m.phone} />
+                      </div>
                     </div>
                     <span className={`px-2 py-1 rounded border text-[9px] font-black uppercase tracking-wider ${status.color}`}>{status.label}</span>
                   </div>
@@ -344,16 +499,18 @@ export default function Members() {
                     <div>
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-none mb-1.5">Plan</p>
                       <p className="text-sm font-bold text-zinc-200">{m.planType || m.plan}</p>
+                      <p className="text-xs font-medium text-zinc-500 mt-1">Due {formatCurrency(m.balanceDue)}</p>
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-none mb-1.5">Expiry</p>
-                      <p className="text-sm font-bold text-zinc-200">{new Date(m.expiry_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                      <p className="text-sm font-bold text-zinc-200">{formatDisplayDate(m.expiry_date)}</p>
                     </div>
                   </div>
 
                   <div className="flex gap-2 justify-end mt-1">
                     <button onClick={() => handleDelete(m.id)} className="p-3 bg-error/5 text-error/70 hover:text-error hover:bg-error/10 rounded-xl transition-colors flex-1 flex items-center justify-center border border-error/10"><span className="material-symbols-outlined text-[18px]">delete</span></button>
                     <button onClick={() => openEdit(m)} className="p-3 bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors flex-1 flex items-center justify-center border border-white/10"><span className="material-symbols-outlined text-[18px]">edit</span></button>
+                    <button onClick={() => openHistoryModal(m)} className="p-3 bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors flex-1 flex items-center justify-center border border-white/10"><span className="material-symbols-outlined text-[18px]">receipt_long</span></button>
                     <button onClick={() => openRenewModal(m)} className="py-3 px-4 text-primary hover:text-zinc-950 hover:bg-primary bg-primary/10 rounded-xl transition-colors flex-[2] flex items-center justify-center gap-2 font-black text-sm uppercase tracking-wider border border-primary/20"><span className="material-symbols-outlined text-[18px]">autorenew</span> Renew</button>
                   </div>
                 </motion.div>
@@ -435,9 +592,19 @@ export default function Members() {
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Start Date</label>
                     <input type="date" required value={formData.joinDate} onChange={(e) => setFormData({ ...formData, joinDate: e.target.value })} className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all" />
                   </div>
+                  {!editingId && (
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Amount Received Now</label>
+                      <input type="number" min="0" value={formData.initialPaid} onChange={(e) => setFormData({ ...formData, initialPaid: e.target.value })} placeholder="Leave blank for full payment" className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {editingId && <div />}
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Expiry Date</label>
-                    <input readOnly value={computedExpiryDate} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-300 outline-none" />
+                    <input readOnly value={formatDisplayDate(computedExpiryDate)} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-300 outline-none" />
                   </div>
                 </div>
 
@@ -479,12 +646,22 @@ export default function Members() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="rounded-lg border border-white/5 bg-zinc-950/60 px-4 py-3">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Plan</p>
-                    <p className="mt-1 text-sm font-bold text-white">{renewingMember.planType || renewingMember.plan}</p>
+                    <select
+                      value={renewalData.planType}
+                      onChange={(e) => setRenewalData({ ...renewalData, planType: e.target.value })}
+                      className="mt-1 w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-3 py-2 text-sm font-bold text-white outline-none transition-all"
+                    >
+                      {Object.keys(PLAN_OPTIONS).map((plan) => <option key={plan} value={plan}>{plan}</option>)}
+                    </select>
                   </div>
                   <div className="rounded-lg border border-white/5 bg-zinc-950/60 px-4 py-3">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Renewal Period</p>
-                    <p className="mt-1 text-sm font-bold text-white">{renewingMember.planDuration || 30} days</p>
+                    <p className="mt-1 text-sm font-bold text-white">{getPlanConfig(renewalData.planType).label}</p>
                   </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Plan Fee</label>
+                  <input readOnly value={formatCurrency(renewingMember.planPrice)} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-300 outline-none" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Amount Received</label>
@@ -502,21 +679,71 @@ export default function Members() {
                   <p className="text-[10px] font-bold uppercase tracking-widest text-primary">New Expiry</p>
                   <p className="mt-1 text-sm font-bold text-white">
                     {(() => {
+                      const selectedPlan = getPlanConfig(renewalData.planType);
                       const now = new Date();
                       const currentExpiry = new Date(renewingMember.expiry_date);
                       const baseDate = currentExpiry < now ? now : currentExpiry;
                       const renewedExpiry = new Date(baseDate);
-                      renewedExpiry.setDate(renewedExpiry.getDate() + Number(renewingMember.planDuration || 30));
-                      return renewedExpiry.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                      renewedExpiry.setDate(renewedExpiry.getDate() + Number(selectedPlan.durationDays));
+                      return formatDisplayDate(renewedExpiry);
                     })()}
                   </p>
+                  <p className="mt-2 text-xs text-primary/80">Balance after renewal: {formatCurrency(buildMembershipFinancials(renewingMember.planPrice, renewalData.amount).balanceDue)}</p>
                 </div>
+                {renewError && <div className="rounded-lg border border-error/20 bg-error/10 px-4 py-3 text-sm text-error">{renewError}</div>}
                 <div className="pt-2">
                   <button type="submit" className="w-full py-4 bg-primary text-zinc-950 font-black uppercase tracking-widest text-sm rounded-xl hover:bg-primary-dim shadow-[0_0_20px_rgba(253,139,0,0.2)] transition-all">
                     Confirm Renewal
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showHistoryModal && selectedHistoryMember && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-surface-container-highest p-6 md:p-8 rounded-2xl w-full max-w-2xl border border-white/5 shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 p-3">
+                <button onClick={closeHistoryModal} className="text-zinc-500 hover:text-white p-2 flex"><span className="material-symbols-outlined">close</span></button>
+              </div>
+
+              <h2 className="text-xl md:text-2xl font-black headline-font italic mb-2 text-white uppercase">Payment History</h2>
+              <p className="text-sm text-zinc-400 mb-6">{selectedHistoryMember.name}</p>
+
+              <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                {selectedMemberPayments.length === 0 ? (
+                  <div className="rounded-xl border border-white/5 bg-zinc-950/50 px-4 py-6 text-sm text-zinc-500">
+                    No payments recorded for this member yet.
+                  </div>
+                ) : (
+                  selectedMemberPayments.map((payment) => (
+                    <div key={payment.id} className="rounded-xl border border-white/5 bg-zinc-950/50 px-4 py-4 flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-bold text-white">{payment.category || 'Membership'}{payment.plan_type ? ` | ${payment.plan_type}` : ''}{payment.supplement_name ? ` | ${payment.supplement_name}` : ''}{payment.payment_phase ? ` | ${payment.payment_phase}` : ''}</p>
+                        <p className="mt-1 text-xs text-zinc-400">{formatDisplayDate(payment.date)} | {payment.method}</p>
+                        {payment.balance_after != null && <p className="mt-1 text-[11px] text-zinc-500">Balance after: {formatCurrency(payment.balance_after)}</p>}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-black text-primary">{formatCurrency(payment.amount)}</p>
+                        <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">{payment.immutable === false ? 'Open' : 'Locked'}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </motion.div>
           </motion.div>
         )}

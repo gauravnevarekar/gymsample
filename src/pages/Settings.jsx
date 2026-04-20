@@ -22,9 +22,9 @@ export default function Settings() {
         const gymSnap = await getDoc(gymRef);
 
         if (gymSnap.exists()) {
-          setGymName(gymSnap.data().name || 'My Gym');
+          setGymName(gymSnap.data().name || 'GYMFLOW');
         } else {
-          setGymName('My Gym');
+          setGymName('GYMFLOW');
         }
       } catch (err) {
         console.error(err);
@@ -47,7 +47,7 @@ export default function Settings() {
       setMessage('');
 
       await updateDoc(doc(db, 'gyms', currentUser.uid), {
-        name: gymName.trim() || 'My Gym'
+        name: gymName.trim() || 'GYMFLOW'
       });
 
       setMessage('Settings updated successfully.');

@@ -71,7 +71,7 @@ export default function Layout() {
       <aside className="hidden md:flex flex-col h-full w-72 fixed left-0 top-0 overflow-y-auto bg-zinc-950 z-50">
         <div className="flex flex-col h-full gap-2 py-8">
           <div className="px-8 mb-10">
-            <div className="font-['Lexend'] font-black text-orange-500 text-xl tracking-widest">KINETIC</div>
+            <div className="font-['Lexend'] font-black text-orange-500 text-xl tracking-widest">GYMFLOW</div>
             <div className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] mt-1 font-medium">Precision Management</div>
           </div>
           <nav className="flex-1 flex flex-col gap-1">
@@ -105,7 +105,7 @@ export default function Layout() {
       <header className="fixed top-0 right-0 left-0 md:left-72 z-40 bg-zinc-950/70 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
         <div className="flex justify-between items-center w-full px-6 py-4">
           <div className="flex items-center gap-4">
-            <span className="md:hidden font-['Lexend'] text-2xl font-black italic tracking-tighter text-orange-500">KINETIC</span>
+            <span className="md:hidden font-['Lexend'] text-2xl font-black italic tracking-tighter text-orange-500">GYMFLOW</span>
             <div className="relative hidden md:block">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">search</span>
               <input

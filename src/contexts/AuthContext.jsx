@@ -42,7 +42,7 @@ export function AuthProvider({ children }) {
 
           if (!gymDocSnap.exists()) {
             await setDoc(gymDocRef, {
-              name: 'My Gym',
+              name: 'GYMFLOW',
               createdAt: new Date().toISOString()
             });
           }
