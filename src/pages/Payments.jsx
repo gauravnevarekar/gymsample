@@ -69,6 +69,7 @@ export default function Payments() {
 
   const selectedMember = members.find((member) => member.id === newPayment.memberId);
   const isMembershipPayment = newPayment.category === 'Membership';
+  const membersWithPendingBalance = members.filter((member) => Number(member.balanceDue || 0) > 0);
 
   const handleAddPayment = async (e) => {
     e.preventDefault();
@@ -139,7 +140,7 @@ export default function Payments() {
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 md:mb-10 gap-4">
         <div>
           <h1 className="text-3xl md:text-4xl font-black headline-font uppercase italic tracking-tighter text-white">Payments</h1>
-          <p className="text-sm md:text-base text-zinc-500 font-medium mt-1">Record membership and supplement revenues</p>
+          <p className="text-sm md:text-base text-zinc-500 font-medium mt-1">Collect partial balances and record supplement revenues</p>
         </div>
         <motion.button
           whileHover={{ scale: 1.05 }}
@@ -152,7 +153,7 @@ export default function Payments() {
       </div>
 
       <div className="mb-6 rounded-2xl border border-white/5 bg-surface-container-low/50 px-4 py-4 text-sm text-zinc-400">
-        Payments are locked after confirmation. This keeps the ledger transparent and prevents silent edits.
+        Payments are locked after confirmation. Renewals must be recorded from the Members page so the new plan, fee, payment, and expiry stay in sync.
       </div>
 
       <div className="hidden md:block bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 shadow-2xl overflow-hidden">
@@ -290,9 +291,16 @@ export default function Payments() {
                     }}
                     className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all"
                   >
-                    <option value="" disabled>{isMembershipPayment ? 'Choose a member...' : 'Optional member linkage'}</option>
-                    {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    <option value="" disabled>{isMembershipPayment ? 'Choose a partial member...' : 'Optional member linkage'}</option>
+                    {(isMembershipPayment ? membersWithPendingBalance : members).map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}{isMembershipPayment ? ` | Due ${formatCurrency(m.balanceDue)}` : ''}
+                      </option>
+                    ))}
                   </select>
+                  {isMembershipPayment && (
+                    <p className="mt-1 text-xs text-zinc-500">Only members with pending balance appear here. Use `Renew` on the Members page for a new cycle.</p>
+                  )}
                 </div>
 
                 {isMembershipPayment ? null : (

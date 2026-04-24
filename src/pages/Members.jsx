@@ -42,13 +42,66 @@ function getPlanConfig(planType) {
   return PLAN_OPTIONS[planType] || PLAN_OPTIONS.Monthly;
 }
 
-const WhatsAppIcon = ({ phone }) => {
-  if (!phone) return null;
-  const num = String(phone).replace(/\D/g, '');
+function normalizeAmount(value) {
+  if (value === '' || value == null) return 0;
+  return Number(value);
+}
+
+function getMembershipStatus(member) {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  const expiryDate = new Date(member.expiry_date);
+  expiryDate.setHours(0, 0, 0, 0);
+
+  const diffTime = expiryDate.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return { key: 'expired', label: 'Expired', color: 'text-red-400 bg-red-500/10 border-red-500/20' };
+  }
+
+  if (Number(member.balanceDue || 0) > 0) {
+    return { key: 'partial', label: 'Partial', color: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/20' };
+  }
+
+  if (diffDays <= 3) {
+    return { key: 'expiring', label: 'Expiring', color: 'text-orange-300 bg-orange-500/10 border-orange-500/20' };
+  }
+
+  return { key: 'active', label: 'Active', color: 'text-green-400 bg-green-500/10 border-green-500/20' };
+}
+
+function buildWhatsAppMessage(member) {
+  const expiryDate = new Date(member.expiry_date);
+  expiryDate.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const diffTime = expiryDate.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const formattedDate = expiryDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+
+  if (diffDays < 0) {
+    return `Hello ${member.name}, your gym membership expired on ${formattedDate}. Please renew soon to continue your workouts.`;
+  }
+
+  if (diffDays === 0) {
+    return `Hello ${member.name}, your gym membership expires today (${formattedDate}). Please renew today to continue your workouts without interruption.`;
+  }
+
+  return `Hello ${member.name}, your gym membership is expiring on ${formattedDate}. Please renew before the expiry date to continue your workouts without interruption.`;
+}
+
+const WhatsAppIcon = ({ member }) => {
+  if (!member?.phone) return null;
+  const message = buildWhatsAppMessage(member);
+  const num = String(member.phone).replace(/\D/g, '');
   const waNum = num.length === 10 ? '91' + num : num;
   return (
     <a
-      href={`https://wa.me/${waNum}`}
+      href={`https://wa.me/${waNum}?text=${encodeURIComponent(message)}`}
       target="_blank"
       rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}
@@ -66,6 +119,7 @@ export default function Members() {
   const { currentUser } = useAuth();
   const { memberSearch, setMemberSearch } = useOutletContext();
   const [members, setMembers] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRenewModal, setShowRenewModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -75,7 +129,7 @@ export default function Members() {
   const [renewingMember, setRenewingMember] = useState(null);
   const [selectedHistoryMember, setSelectedHistoryMember] = useState(null);
   const [payments, setPayments] = useState([]);
-  const [renewalData, setRenewalData] = useState({ amount: '', method: 'Cash', planType: 'Monthly' });
+  const [renewalData, setRenewalData] = useState({ amount: '', method: 'Cash', planType: 'Monthly', planPrice: '' });
   const [renewError, setRenewError] = useState('');
 
   useEffect(() => {
@@ -131,7 +185,7 @@ export default function Members() {
   function closeRenewModal() {
     setShowRenewModal(false);
     setRenewingMember(null);
-    setRenewalData({ amount: '', method: 'Cash', planType: 'Monthly' });
+    setRenewalData({ amount: '', method: 'Cash', planType: 'Monthly', planPrice: '' });
     setRenewError('');
   }
 
@@ -256,7 +310,8 @@ export default function Members() {
     setRenewalData({
       amount: member.planPrice ? String(member.planPrice) : '',
       method: 'Cash',
-      planType: existingPlanType
+      planType: existingPlanType,
+      planPrice: member.planPrice ? String(member.planPrice) : ''
     });
     setRenewError('');
     setShowRenewModal(true);
@@ -285,15 +340,22 @@ export default function Members() {
       const baseDate = currentExpiry < now ? now : currentExpiry;
       const renewedExpiry = new Date(baseDate);
       renewedExpiry.setDate(renewedExpiry.getDate() + Number(selectedPlan.durationDays));
-      const financials = buildMembershipFinancials(renewingMember.planPrice, renewalData.amount);
+      const renewalPlanFee = normalizeAmount(renewalData.planPrice);
+      const renewalAmount = normalizeAmount(renewalData.amount);
+      const financials = buildMembershipFinancials(renewalPlanFee, renewalAmount);
 
-      if (Number(renewalData.amount || 0) > Number(renewingMember.planPrice || 0)) {
+      if (renewalPlanFee <= 0) {
+        setRenewError('Plan fee must be greater than zero.');
+        return;
+      }
+
+      if (renewalAmount > renewalPlanFee) {
         setRenewError('Amount received cannot be more than the plan fee.');
         return;
       }
 
       const confirmation = window.confirm(
-        `Confirm ${renewalData.planType.toLowerCase()} renewal for ${renewingMember.name} for ${formatCurrency(renewalData.amount)}? This payment cannot be edited later.`
+        `Confirm ${renewalData.planType.toLowerCase()} renewal for ${renewingMember.name} with fee ${formatCurrency(renewalPlanFee)} and payment ${formatCurrency(renewalAmount)}? This payment cannot be edited later.`
       );
 
       if (!confirmation) return;
@@ -301,7 +363,7 @@ export default function Members() {
       await addDoc(collection(db, 'gyms', currentUser.uid, 'payments'), {
         memberId: renewingMember.id,
         member_name: renewingMember.name,
-        amount: Number(renewalData.amount),
+        amount: renewalAmount,
         method: renewalData.method,
         category: 'Membership',
         plan_type: renewalData.planType,
@@ -315,7 +377,7 @@ export default function Members() {
         plan: renewalData.planType,
         planType: renewalData.planType,
         planDuration: selectedPlan.durationDays,
-        planPrice: Number(renewingMember.planPrice),
+        planPrice: renewalPlanFee,
         amountPaid: financials.amountPaid,
         balanceDue: financials.balanceDue,
         paymentStatus: financials.paymentStatus,
@@ -325,19 +387,15 @@ export default function Members() {
       closeRenewModal();
     } catch (err) {
       console.error(err);
+      setRenewError('Failed to renew membership.');
     }
-  };
-
-  const getStatus = (expiryDate) => {
-    const now = new Date();
-    const exp = new Date(expiryDate);
-    return exp >= now
-      ? { label: 'Active', color: 'text-green-400 bg-green-500/10 border-green-500/20' }
-      : { label: 'Expired', color: 'text-red-400 bg-red-500/10 border-red-500/20' };
   };
 
   const filteredMembers = members.filter((member) => {
     const query = memberSearch.trim().toLowerCase();
+    const status = getMembershipStatus(member);
+    const matchesStatus = statusFilter === 'all' || status.key === statusFilter;
+    if (!matchesStatus) return false;
     if (!query) return true;
 
     return [
@@ -347,7 +405,8 @@ export default function Members() {
       member.age,
       member.plan,
       member.planType,
-      member.expiry_date
+      member.expiry_date,
+      status.label
     ].some((value) => String(value || '').toLowerCase().includes(query));
   });
 
@@ -375,15 +434,45 @@ export default function Members() {
 
       {/* Mobile Search Bar */}
       <div className="block md:hidden mb-6 mt-2">
-        <div className="relative w-full">
-          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">search</span>
-          <input
-            value={memberSearch}
-            onChange={(e) => setMemberSearch(e.target.value)}
-            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white placeholder-zinc-500"
-            placeholder="Search members..."
-            type="text"
-          />
+        <div className="grid grid-cols-1 gap-3">
+          <div className="relative w-full">
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">search</span>
+            <input
+              value={memberSearch}
+              onChange={(e) => setMemberSearch(e.target.value)}
+              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white placeholder-zinc-500"
+              placeholder="Search members..."
+              type="text"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:ring-1 focus:ring-primary focus:outline-none transition-all"
+          >
+            <option value="all">All Statuses</option>
+            <option value="expired">Expired</option>
+            <option value="expiring">Expiring</option>
+            <option value="active">Active</option>
+            <option value="partial">Partial</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="hidden md:flex md:items-center md:justify-end mb-6">
+        <div className="w-full max-w-xs">
+          <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Status Filter</label>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:ring-1 focus:ring-primary focus:outline-none transition-all"
+          >
+            <option value="all">All Statuses</option>
+            <option value="expired">Expired</option>
+            <option value="expiring">Expiring</option>
+            <option value="active">Active</option>
+            <option value="partial">Partial</option>
+          </select>
         </div>
       </div>
 
@@ -410,10 +499,7 @@ export default function Members() {
               ) : (
                 <AnimatePresence>
                   {filteredMembers.map((m) => {
-                    const baseStatus = getStatus(m.expiry_date);
-                    const status = baseStatus.label === 'Active' && m.balanceDue > 0
-                      ? { label: 'Partial', color: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/20' }
-                      : baseStatus;
+                    const status = getMembershipStatus(m);
                     return (
                       <motion.tr
                         initial={{ opacity: 0 }}
@@ -426,7 +512,7 @@ export default function Members() {
                         <td className="py-4 px-6 text-sm text-zinc-400">
                           <div className="flex items-center">
                             {m.phone}
-                            <WhatsAppIcon phone={m.phone} />
+                            <WhatsAppIcon member={m} />
                           </div>
                         </td>
                         <td className="py-4 px-6 text-sm text-zinc-400">
@@ -472,10 +558,7 @@ export default function Members() {
         ) : (
           <AnimatePresence>
             {filteredMembers.map((m) => {
-              const baseStatus = getStatus(m.expiry_date);
-              const status = baseStatus.label === 'Active' && m.balanceDue > 0
-                ? { label: 'Partial', color: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/20' }
-                : baseStatus;
+              const status = getMembershipStatus(m);
               return (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -489,7 +572,7 @@ export default function Members() {
                       <h3 className="text-lg font-black text-white">{m.name}</h3>
                       <div className="flex items-start gap-2 mt-1">
                         <p className="text-[11px] text-zinc-400 font-medium break-words">{m.phone} | {[m.gender, m.age ? `${m.age} yrs` : ''].filter(Boolean).join(', ')}</p>
-                        <WhatsAppIcon phone={m.phone} />
+                        <WhatsAppIcon member={m} />
                       </div>
                     </div>
                     <span className={`px-2 py-1 rounded border text-[9px] font-black uppercase tracking-wider ${status.color}`}>{status.label}</span>
@@ -661,7 +744,7 @@ export default function Members() {
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Plan Fee</label>
-                  <input readOnly value={formatCurrency(renewingMember.planPrice)} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-zinc-300 outline-none" />
+                  <input type="number" min="1" required value={renewalData.planPrice} onChange={(e) => setRenewalData({ ...renewalData, planPrice: e.target.value })} className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Amount Received</label>
@@ -688,7 +771,7 @@ export default function Members() {
                       return formatDisplayDate(renewedExpiry);
                     })()}
                   </p>
-                  <p className="mt-2 text-xs text-primary/80">Balance after renewal: {formatCurrency(buildMembershipFinancials(renewingMember.planPrice, renewalData.amount).balanceDue)}</p>
+                  <p className="mt-2 text-xs text-primary/80">Balance after renewal: {formatCurrency(buildMembershipFinancials(renewalData.planPrice, renewalData.amount).balanceDue)}</p>
                 </div>
                 {renewError && <div className="rounded-lg border border-error/20 bg-error/10 px-4 py-3 text-sm text-error">{renewError}</div>}
                 <div className="pt-2">
