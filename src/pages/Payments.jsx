@@ -4,6 +4,8 @@ import { db } from '../lib/firebase';
 import { buildMembershipFinancials, formatCurrency, formatDisplayDate } from '../lib/formatters';
 import { collection, onSnapshot, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
+import ExportModal from '../components/ExportModal';
+import { exportToExcel, filterByDateRange } from '../lib/exportUtils';
 
 function createInitialPayment() {
   return {
@@ -23,6 +25,9 @@ export default function Payments() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newPayment, setNewPayment] = useState(createInitialPayment());
   const [paymentError, setPaymentError] = useState('');
+  
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isExportingData, setIsExportingData] = useState(false);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -135,6 +140,32 @@ export default function Payments() {
     }
   };
 
+  const handleExport = async (startDate, endDate) => {
+    try {
+      setIsExportingData(true);
+      
+      const filteredPayments = filterByDateRange(payments, 'date', startDate, endDate);
+      
+      const formattedData = filteredPayments.map(p => ({
+        Date: new Date(p.date).toLocaleDateString(),
+        'Member Name': p.member_name || '-',
+        Category: p.category || '-',
+        Plan: p.plan_type || '-',
+        'Payment Type': p.payment_phase || '-',
+        'Payment Method': p.method || '-',
+        Amount: p.amount || 0,
+        Notes: p.notes || '-'
+      }));
+
+      exportToExcel(formattedData, 'Payments', `payments-export-${startDate}-to-${endDate}.xlsx`);
+      setIsExportModalOpen(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsExportingData(false);
+    }
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 md:mb-10 gap-4">
@@ -142,14 +173,24 @@ export default function Payments() {
           <h1 className="text-3xl md:text-4xl font-black headline-font uppercase italic tracking-tighter text-white">Payments</h1>
           <p className="text-sm md:text-base text-zinc-500 font-medium mt-1">Collect partial balances and record supplement revenues</p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowAddModal(true)}
-          className="w-full md:w-auto bg-primary hover:bg-primary-dim text-on-primary px-6 py-3.5 md:py-3 rounded-xl font-bold shadow-[0_0_15px_rgba(253,139,0,0.3)] transition-colors flex items-center justify-center gap-2"
-        >
-          <span className="material-symbols-outlined text-sm">add</span> Receive Payment
-        </motion.button>
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsExportModalOpen(true)}
+            className="w-full md:w-auto bg-surface-container-highest border border-white/10 hover:bg-white/10 text-white px-5 py-3.5 md:py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-outlined text-sm">download</span> Export
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowAddModal(true)}
+            className="w-full md:w-auto bg-primary hover:bg-primary-dim text-on-primary px-6 py-3.5 md:py-3 rounded-xl font-bold shadow-[0_0_15px_rgba(253,139,0,0.3)] transition-colors flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-outlined text-sm">add</span> Receive Payment
+          </motion.button>
+        </div>
       </div>
 
       <div className="mb-6 rounded-2xl border border-white/5 bg-surface-container-low/50 px-4 py-4 text-sm text-zinc-400">
@@ -363,6 +404,14 @@ export default function Payments() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ExportModal 
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExport}
+        title="Export Payments"
+        isExporting={isExportingData}
+      />
     </motion.div>
   );
 }

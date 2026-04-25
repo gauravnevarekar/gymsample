@@ -3,12 +3,17 @@ import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, onSnapshot, addDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
+import ExportModal from '../components/ExportModal';
+import { exportToExcel, filterByDateRange } from '../lib/exportUtils';
 
 export default function Expenses() {
   const { currentUser } = useAuth();
   const [expenses, setExpenses] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newExpense, setNewExpense] = useState({ category: 'Rent', amount: '', description: '' });
+  
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isExportingData, setIsExportingData] = useState(false);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -40,6 +45,28 @@ export default function Expenses() {
     }
   };
 
+  const handleExport = async (startDate, endDate) => {
+    try {
+      setIsExportingData(true);
+      
+      const filteredExpenses = filterByDateRange(expenses, 'date', startDate, endDate);
+      
+      const formattedData = filteredExpenses.map(e => ({
+        Date: new Date(e.date).toLocaleDateString(),
+        Category: e.category || '-',
+        Description: e.description || '-',
+        Amount: e.amount || 0
+      }));
+
+      exportToExcel(formattedData, 'Expenses', `expenses-export-${startDate}-to-${endDate}.xlsx`);
+      setIsExportModalOpen(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsExportingData(false);
+    }
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 md:mb-10 gap-4">
@@ -47,13 +74,22 @@ export default function Expenses() {
           <h1 className="text-3xl md:text-4xl font-black headline-font italic uppercase tracking-tighter text-white">Expenses</h1>
           <p className="text-sm md:text-base text-zinc-500 font-medium mt-1">Track gym operational costs</p>
         </div>
-        <motion.button 
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowAddModal(true)}
-          className="w-full md:w-auto bg-error hover:bg-error-dim text-white px-6 py-3.5 md:py-3 rounded-xl font-bold shadow-[0_0_15px_rgba(255,115,81,0.3)] border border-error/50 transition-colors flex items-center justify-center gap-2">
-          <span className="material-symbols-outlined text-sm">remove</span> Log Expense
-        </motion.button>
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsExportModalOpen(true)}
+            className="w-full md:w-auto bg-surface-container-highest border border-white/10 hover:bg-white/10 text-white px-5 py-3.5 md:py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2">
+            <span className="material-symbols-outlined text-sm">download</span> Export
+          </motion.button>
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowAddModal(true)}
+            className="w-full md:w-auto bg-error hover:bg-error-dim text-white px-6 py-3.5 md:py-3 rounded-xl font-bold shadow-[0_0_15px_rgba(255,115,81,0.3)] border border-error/50 transition-colors flex items-center justify-center gap-2">
+            <span className="material-symbols-outlined text-sm">remove</span> Log Expense
+          </motion.button>
+        </div>
       </div>
 
       {/* Desktop Table View */}
@@ -168,6 +204,14 @@ export default function Expenses() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ExportModal 
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExport}
+        title="Export Expenses"
+        isExporting={isExportingData}
+      />
     </motion.div>
   );
 }

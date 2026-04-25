@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../lib/firebase';
+import { db, storage } from '../lib/firebase';
 import { buildMembershipFinancials, formatCurrency, formatDisplayDate } from '../lib/formatters';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { motion, AnimatePresence } from 'framer-motion';
+import Avatar from '../components/Avatar';
+import { compressImage } from '../lib/imageUtils';
+import ExportModal from '../components/ExportModal';
+import { exportToExcel, filterByDateRange } from '../lib/exportUtils';
 
 const PLAN_OPTIONS = {
   Monthly: { durationDays: 30, label: '30 Days' },
@@ -22,7 +27,8 @@ function createInitialFormData() {
     planPrice: '',
     initialPaid: '',
     planDuration: PLAN_OPTIONS.Monthly.durationDays,
-    joinDate: new Date().toISOString().split('T')[0]
+    joinDate: new Date().toISOString().split('T')[0],
+    photoURL: ''
   };
 }
 
@@ -117,11 +123,17 @@ export default function Members() {
   const [editingId, setEditingId] = useState(null);
   const [formError, setFormError] = useState('');
   const [formData, setFormData] = useState(createInitialFormData());
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [renewingMember, setRenewingMember] = useState(null);
   const [selectedHistoryMember, setSelectedHistoryMember] = useState(null);
   const [payments, setPayments] = useState([]);
   const [renewalData, setRenewalData] = useState({ amount: '', method: 'Cash', planType: 'Monthly', planPrice: '' });
   const [renewError, setRenewError] = useState('');
+  
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isExportingData, setIsExportingData] = useState(false);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -171,6 +183,8 @@ export default function Members() {
     setEditingId(null);
     setFormError('');
     setFormData(createInitialFormData());
+    setPhotoFile(null);
+    setPhotoPreview(null);
   }
 
   function closeRenewModal() {
@@ -267,11 +281,50 @@ export default function Members() {
         }
       }
 
+      // Handle photo upload
+      const targetMemberId = editingId || memberRef.id;
+      if (photoFile && targetMemberId) {
+        setIsUploading(true);
+        try {
+          const compressedFile = await compressImage(photoFile);
+          const storageRef = ref(storage, `gyms/${currentUser.uid}/members/${targetMemberId}/profile.jpg`);
+          await uploadBytes(storageRef, compressedFile);
+          const photoURL = await getDownloadURL(storageRef);
+          
+          await updateDoc(doc(db, 'gyms', currentUser.uid, 'members', targetMemberId), {
+            photoURL
+          });
+        } catch (uploadErr) {
+          console.error("Photo upload failed:", uploadErr);
+          // Don't block member creation/edit if photo fails
+        }
+      }
+
+      setIsUploading(false);
       closeModal();
     } catch (err) {
       console.error(err);
+      setIsUploading(false);
       setFormError('Failed to save member.');
     }
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPhotoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setFormData(prev => ({ ...prev, photoURL: '' }));
   };
 
   const openEdit = (member) => {
@@ -289,8 +342,11 @@ export default function Members() {
       planPrice: member.planPrice ?? '',
       initialPaid: '',
       planDuration: Number(member.planDuration || fallbackPlan.durationDays),
-      joinDate: member.join_date || new Date().toISOString().split('T')[0]
+      joinDate: member.join_date || new Date().toISOString().split('T')[0],
+      photoURL: member.photoURL || ''
     });
+    setPhotoFile(null);
+    setPhotoPreview(member.photoURL || null);
     setShowAddModal(true);
   };
 
@@ -382,6 +438,37 @@ export default function Members() {
     }
   };
 
+  const handleExport = async (startDate, endDate) => {
+    try {
+      setIsExportingData(true);
+      
+      const filteredMembers = filterByDateRange(members, 'join_date', startDate, endDate);
+      
+      const formattedData = filteredMembers.map(m => {
+        const status = getMembershipStatus(m);
+        return {
+          Name: m.name,
+          Phone: m.phone || '-',
+          Plan: m.planType || m.plan || '-',
+          'Join Date': m.join_date || '-',
+          'Expiry Date': m.expiry_date || '-',
+          Status: status.label,
+          'Total Fee': m.planPrice || 0,
+          'Paid Amount': m.amountPaid || 0,
+          Balance: m.balanceDue || 0
+        };
+      });
+
+      exportToExcel(formattedData, 'Members', `members-export-${startDate}-to-${endDate}.xlsx`);
+      setIsExportModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      // In a real app we might show a toast, but this is fine
+    } finally {
+      setIsExportingData(false);
+    }
+  };
+
   const filteredMembers = members.filter((member) => {
     const query = memberSearch.trim().toLowerCase();
     const status = getMembershipStatus(member);
@@ -412,15 +499,26 @@ export default function Members() {
           <h1 className="text-3xl md:text-4xl font-black headline-font italic uppercase tracking-tighter text-on-surface">Member Directory</h1>
           <p className="text-sm md:text-base text-zinc-500 font-medium mt-1">Manage operations and members</p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowAddModal(true)}
-          className="w-full md:w-auto bg-primary hover:bg-primary-dim text-on-primary px-6 py-3.5 md:py-3 rounded-xl font-bold shadow-[0_0_15px_rgba(253,139,0,0.3)] transition-colors flex items-center justify-center gap-2"
-        >
-          <span className="material-symbols-outlined text-sm">add</span>
-          Add Member
-        </motion.button>
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsExportModalOpen(true)}
+            className="w-full md:w-auto bg-surface-container-highest border border-white/10 hover:bg-white/10 text-white px-5 py-3.5 md:py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-outlined text-sm">download</span>
+            Export
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowAddModal(true)}
+            className="w-full md:w-auto bg-primary hover:bg-primary-dim text-on-primary px-6 py-3.5 md:py-3 rounded-xl font-bold shadow-[0_0_15px_rgba(253,139,0,0.3)] transition-colors flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-outlined text-sm">add</span>
+            Add Member
+          </motion.button>
+        </div>
       </div>
 
       {/* Mobile Search Bar */}
@@ -499,7 +597,10 @@ export default function Members() {
                         key={m.id}
                         className="hover:bg-zinc-800/30 transition-colors group cursor-default"
                       >
-                        <td className="py-4 px-6 font-medium text-white">{m.name}</td>
+                        <td className="py-4 px-6 font-medium text-white flex items-center gap-3">
+                          <Avatar photoURL={m.photoURL} name={m.name} size="md" />
+                          <span>{m.name}</span>
+                        </td>
                         <td className="py-4 px-6 text-sm text-zinc-400">
                           <div className="flex items-center">
                             {m.phone}
@@ -559,11 +660,14 @@ export default function Members() {
                   className="bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 p-5 shadow-lg flex flex-col gap-4"
                 >
                   <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-black text-white">{m.name}</h3>
-                      <div className="flex items-start gap-2 mt-1">
-                        <p className="text-[11px] text-zinc-400 font-medium break-words">{m.phone} | {[m.gender, m.age ? `${m.age} yrs` : ''].filter(Boolean).join(', ')}</p>
-                        <WhatsAppIcon member={m} />
+                    <div className="flex gap-3 items-center">
+                      <Avatar photoURL={m.photoURL} name={m.name} size="lg" />
+                      <div>
+                        <h3 className="text-lg font-black text-white">{m.name}</h3>
+                        <div className="flex items-start gap-2 mt-1">
+                          <p className="text-[11px] text-zinc-400 font-medium break-words">{m.phone} | {[m.gender, m.age ? `${m.age} yrs` : ''].filter(Boolean).join(', ')}</p>
+                          <WhatsAppIcon member={m} />
+                        </div>
                       </div>
                     </div>
                     <span className={`px-2 py-1 rounded border text-[9px] font-black uppercase tracking-wider ${status.color}`}>{status.label}</span>
@@ -615,6 +719,22 @@ export default function Members() {
               <h2 className="text-xl md:text-2xl font-black headline-font italic mb-6 text-white uppercase">{editingId ? 'Edit Member' : 'Add New Member'}</h2>
 
               <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="flex flex-col items-center justify-center mb-6">
+                  <div className="relative mb-3 group">
+                    <Avatar photoURL={photoPreview} name={formData.name || 'New Member'} size="xl" className="border-4 border-zinc-800" />
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                      <span className="material-symbols-outlined text-white text-2xl">photo_camera</span>
+                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoChange} />
+                    </label>
+                    {photoPreview && (
+                      <button type="button" onClick={removePhoto} className="absolute top-0 right-0 bg-zinc-900 border border-zinc-700 rounded-full p-1.5 text-error hover:bg-error/20 hover:text-error transition-colors shadow-lg translate-x-1/4 -translate-y-1/4">
+                        <span className="material-symbols-outlined text-[14px]">close</span>
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Profile Photo (Optional)</p>
+                </div>
+
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Full Name</label>
                   <input required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all" />
@@ -685,8 +805,9 @@ export default function Members() {
                 {formError && <div className="rounded-lg border border-error/20 bg-error/10 px-4 py-3 text-sm text-error">{formError}</div>}
 
                 <div className="pt-4 pb-2">
-                  <button type="submit" className="w-full py-4 bg-primary text-zinc-950 font-black uppercase tracking-widest text-sm rounded-xl hover:bg-primary-dim shadow-[0_0_20px_rgba(253,139,0,0.2)] transition-all">
-                    {editingId ? 'Save Changes' : 'Confirm Member'}
+                  <button type="submit" disabled={isUploading} className="w-full flex items-center justify-center gap-2 py-4 bg-primary text-zinc-950 font-black uppercase tracking-widest text-sm rounded-xl hover:bg-primary-dim shadow-[0_0_20px_rgba(253,139,0,0.2)] transition-all disabled:opacity-70 disabled:cursor-not-allowed">
+                    {isUploading && <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>}
+                    {isUploading ? 'Saving...' : editingId ? 'Save Changes' : 'Confirm Member'}
                   </button>
                 </div>
               </form>
@@ -822,6 +943,14 @@ export default function Members() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ExportModal 
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExport}
+        title="Export Members"
+        isExporting={isExportingData}
+      />
     </motion.div>
   );
 }

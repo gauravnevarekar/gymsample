@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import Avatar from '../components/Avatar';
 
 export default function Notifications() {
   const { currentUser } = useAuth();
@@ -33,7 +34,8 @@ export default function Notifications() {
             phone: data.phone || '-',
             expiryDate: data.expiry_date,
             diffDays,
-            type: diffDays < 0 ? 'expired' : 'expiring'
+            type: diffDays < 0 ? 'expired' : 'expiring',
+            photoURL: data.photoURL || ''
           });
         }
       });
@@ -81,9 +83,11 @@ export default function Notifications() {
 
               return (
                 <div key={item.id} className="px-4 py-4 md:px-6 md:py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 hover:bg-zinc-800/20 transition-colors">
-                  <div>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <p className="text-white font-bold text-lg">{item.memberName}</p>
+                  <div className="flex items-center gap-4">
+                    <Avatar photoURL={item.photoURL} name={item.memberName} size="md" />
+                    <div>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <p className="text-white font-bold text-lg">{item.memberName}</p>
                       <span className={`px-2.5 py-1 rounded border text-[10px] font-black uppercase tracking-wider ${
                         isExpired
                           ? 'text-error bg-error/10 border-error/20'
@@ -97,8 +101,9 @@ export default function Notifications() {
                       Phone: {item.phone} | Expiry: {new Date(item.expiryDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   </div>
+                </div>
 
-                  <Link
+                <Link
                     to="/members"
                     className="inline-flex items-center justify-center rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-white hover:bg-white/5 transition-colors"
                   >
