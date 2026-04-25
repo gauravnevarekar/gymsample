@@ -43,65 +43,56 @@ function getPlanConfig(planType) {
 }
 
 function normalizeAmount(value) {
-  if (value === '' || value == null) return 0;
-  return Number(value);
+  return Math.max(Number(value || 0), 0);
 }
 
 function getMembershipStatus(member) {
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-
-  const expiryDate = new Date(member.expiry_date);
-  expiryDate.setHours(0, 0, 0, 0);
-
-  const diffTime = expiryDate.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  if (diffDays < 0) {
-    return { key: 'expired', label: 'Expired', color: 'text-red-400 bg-red-500/10 border-red-500/20' };
+  if (member.balanceDue > 0) {
+    return { key: 'partial', label: 'Partial', color: 'text-amber-500 border-amber-500/30 bg-amber-500/10' };
   }
-
-  if (Number(member.balanceDue || 0) > 0) {
-    return { key: 'partial', label: 'Partial', color: 'text-yellow-300 bg-yellow-500/10 border-yellow-500/20' };
+  if (!member.expiry_date) {
+    return { key: 'active', label: 'Active', color: 'text-emerald-500 border-emerald-500/30 bg-emerald-500/10' };
   }
-
-  if (diffDays <= 3) {
-    return { key: 'expiring', label: 'Expiring', color: 'text-orange-300 bg-orange-500/10 border-orange-500/20' };
-  }
-
-  return { key: 'active', label: 'Active', color: 'text-green-400 bg-green-500/10 border-green-500/20' };
-}
-
-function buildWhatsAppMessage(member) {
-  const expiryDate = new Date(member.expiry_date);
-  expiryDate.setHours(0, 0, 0, 0);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const diffTime = expiryDate.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  const formattedDate = expiryDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  const expiry = new Date(member.expiry_date);
+  expiry.setHours(0, 0, 0, 0);
 
-  if (diffDays < 0) {
-    return `Hello ${member.name}, your gym membership expired on ${formattedDate}. Please renew soon to continue your workouts.`;
+  const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 3600 * 24));
+
+  if (daysLeft < 0) {
+    return { key: 'expired', label: 'Expired', color: 'text-error border-error/30 bg-error/10' };
   }
-
-  if (diffDays === 0) {
-    return `Hello ${member.name}, your gym membership expires today (${formattedDate}). Please renew today to continue your workouts without interruption.`;
+  if (daysLeft <= 7) {
+    return { key: 'expiring', label: 'Expiring', color: 'text-primary border-primary/30 bg-primary/10' };
   }
-
-  return `Hello ${member.name}, your gym membership is expiring on ${formattedDate}. Please renew before the expiry date to continue your workouts without interruption.`;
+  return { key: 'active', label: 'Active', color: 'text-emerald-500 border-emerald-500/30 bg-emerald-500/10' };
 }
 
 const WhatsAppIcon = ({ member }) => {
-  if (!member?.phone) return null;
-  const message = buildWhatsAppMessage(member);
+  if (!member || !member.phone) return null;
   const num = String(member.phone).replace(/\D/g, '');
   const waNum = num.length === 10 ? '91' + num : num;
+  
+  let msg = `Hey ${member.name || ''},`;
+  if (member.expiry_date) {
+    const expiryDate = new Date(member.expiry_date);
+    const formattedDate = expiryDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    const expiryCheck = new Date(expiryDate);
+    expiryCheck.setHours(23, 59, 59, 999);
+    
+    if (expiryCheck < new Date()) {
+      msg = `Hey ${member.name}, your gym plan expired on ${formattedDate}. Please renew it as soon as possible to continue your workouts!`;
+    } else {
+      msg = `Hey ${member.name}, your gym plan is expiring on ${formattedDate}. Please renew it soon to avoid any interruptions to your workouts!`;
+    }
+  }
+
   return (
     <a
-      href={`https://wa.me/${waNum}?text=${encodeURIComponent(message)}`}
+      href={`https://wa.me/${waNum}?text=${encodeURIComponent(msg)}`}
       target="_blank"
       rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}

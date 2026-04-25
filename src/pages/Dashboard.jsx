@@ -240,12 +240,12 @@ export default function Dashboard() {
     let msg = "";
     
     if (member.pendingStatus === 'Expired') {
-      msg = `Hello ${member.name}, your gym membership expired on ${formattedDate}. Please renew soon to continue your workouts!`;
+      msg = `Hey ${member.name}, your gym plan expired on ${formattedDate}. Please renew it as soon as possible to continue your workouts!`;
     } else {
-      msg = `Hello ${member.name}, your gym membership is expiring in ${member.diffDays} days (on ${formattedDate}). Please renew soon to continue your workouts!`;
+      msg = `Hey ${member.name}, your gym plan is expiring in ${member.diffDays} days (on ${formattedDate}). Please renew it soon to avoid any interruptions to your workouts!`;
     }
     
-    window.open(`https://wa.me/${phoneNum}?text=${encodeURIComponent(msg)}`, '_blank');
+    window.open(`https://api.whatsapp.com/send?phone=${phoneNum}&text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   // Card Animation Variant

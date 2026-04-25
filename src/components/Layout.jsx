@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import { useEffect, useState } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import PushToast from './PushToast';
 
 export default function Layout() {
   const { currentUser, logout } = useAuth();
@@ -66,6 +67,8 @@ export default function Layout() {
 
   return (
     <div className="bg-surface text-on-surface selection:bg-primary selection:text-on-primary min-h-screen overflow-x-hidden">
+      <PushToast />
+      
       {/* SideNavBar */}
       <aside className="hidden md:flex flex-col h-full w-72 fixed left-0 top-0 overflow-y-auto bg-zinc-950 z-50">
         <div className="flex flex-col h-full gap-2 py-8">

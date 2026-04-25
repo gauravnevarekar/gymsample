@@ -3,6 +3,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 
 export default function Settings() {
   const { currentUser, logout } = useAuth();
@@ -142,6 +143,51 @@ export default function Settings() {
             >
               Log Out
             </button>
+          </div>
+
+          <div className="mt-8 border-t border-white/5 pt-8">
+            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Device</p>
+            <h2 className="text-xl font-black headline-font text-white mt-1">Push Notifications</h2>
+            
+            {(() => {
+              const { isSupportedBrowser, currentToken, loading: pushLoading, error: pushError, enableNotifications, disableNotifications } = usePushNotifications();
+
+              if (!isSupportedBrowser) {
+                return <p className="text-sm mt-3 text-zinc-500 italic">Push notifications are not supported on this browser device.</p>;
+              }
+
+              return (
+                <div className="mt-4 space-y-3">
+                  <p className="text-sm text-zinc-400 leading-snug">
+                    Enable notifications on this device to receive daily smart alerts about expiring members.
+                  </p>
+                  
+                  {currentToken ? (
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col items-start gap-4">
+                      <div className="flex items-center gap-2 text-primary font-bold text-sm">
+                        <span className="material-symbols-outlined text-[18px]">verified</span> Active on this device
+                      </div>
+                      <button 
+                        onClick={disableNotifications}
+                        disabled={pushLoading}
+                        className="text-xs font-bold text-zinc-500 hover:text-white transition-colors"
+                      >
+                        {pushLoading ? 'Removing...' : 'Disable Notifications'}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={enableNotifications}
+                      disabled={pushLoading}
+                      className="w-full rounded-xl border border-primary/30 bg-primary/10 px-5 py-3 text-sm font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-zinc-950 transition-all shadow-[0_0_15px_rgba(253,139,0,0.1)] hover:shadow-[0_0_20px_rgba(253,139,0,0.3)] disabled:opacity-50"
+                    >
+                      {pushLoading ? 'Activating...' : 'Enable Push Notifications'}
+                    </button>
+                  )}
+                  {pushError && <p className="text-xs text-error mt-2">{pushError}</p>}
+                </div>
+              );
+            })()}
           </div>
         </aside>
       </div>
