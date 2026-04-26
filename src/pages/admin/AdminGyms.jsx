@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
+import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
+import { db, app } from '../../lib/firebase';
 import { Link } from 'react-router-dom';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
@@ -8,20 +8,30 @@ export default function AdminGyms() {
   const [gyms, setGyms] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // New gym form
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [creating, setCreating] = useState(false);
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingGym, setEditingGym] = useState(null);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Form state
+  const [formData, setFormData] = useState({
+    uid: '',
+    gymName: '',
+    ownerName: '',
+    email: '',
+    phone: '',
+    plan: 'trial',
+    status: 'active',
+    planStartDate: '',
+    planExpiryDate: ''
+  });
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'gyms'), (snapshot) => {
       const g = [];
       snapshot.forEach(doc => g.push({ id: doc.id, ...doc.data() }));
-      console.log("Fetched gyms:", g); // Debug logging
       setGyms(g);
       setLoading(false);
     }, (err) => {
@@ -41,30 +51,106 @@ export default function AdminGyms() {
     );
   });
 
-  async function handleCreateGym(e) {
-    e.preventDefault();
-    setCreating(true);
+  function openCreateModal() {
+    setEditingGym(null);
     setError('');
+    const now = new Date();
+    const expiry = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+    setFormData({
+      uid: '',
+      gymName: '',
+      ownerName: '',
+      email: '',
+      phone: '',
+      plan: 'trial',
+      status: 'active',
+      planStartDate: now.toISOString().split('T')[0],
+      planExpiryDate: expiry.toISOString().split('T')[0]
+    });
+    setIsModalOpen(true);
+  }
+
+  function openEditModal(gym) {
+    setEditingGym(gym);
+    setError('');
+    
+    // Safely parse existing dates
+    let startDate = '';
+    let expiryDate = '';
+    
+    if (gym.planStartDate) {
+      const d = gym.planStartDate.toDate ? gym.planStartDate.toDate() : new Date(gym.planStartDate);
+      if (!isNaN(d)) startDate = d.toISOString().split('T')[0];
+    }
+    if (gym.planExpiryDate) {
+      const d = gym.planExpiryDate.toDate ? gym.planExpiryDate.toDate() : new Date(gym.planExpiryDate);
+      if (!isNaN(d)) expiryDate = d.toISOString().split('T')[0];
+    }
+
+    setFormData({
+      uid: gym.id,
+      gymName: gym.gymName || gym.name || '',
+      ownerName: gym.ownerName || '',
+      email: gym.email || '',
+      phone: gym.phone || '',
+      plan: gym.plan || 'trial',
+      status: gym.status || 'active',
+      planStartDate: startDate,
+      planExpiryDate: expiryDate
+    });
+    setIsModalOpen(true);
+  }
+
+  async function handleSaveGym(e) {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    
     try {
-      const functions = getFunctions();
-      const createGym = httpsCallable(functions, 'createGym');
-      await createGym({ email, password, name });
+      const targetUid = editingGym ? editingGym.id : formData.uid.trim();
+      if (!targetUid) throw new Error("Firebase Auth UID is required.");
+
+      // Prepare dates
+      const startDate = formData.planStartDate ? new Date(formData.planStartDate) : new Date();
+      const expiryDate = formData.planExpiryDate ? new Date(formData.planExpiryDate) : new Date(startDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+      const gymData = {
+        gymName: formData.gymName,
+        ownerName: formData.ownerName,
+        email: formData.email,
+        phone: formData.phone,
+        plan: formData.plan,
+        status: formData.status,
+        planStartDate: startDate,
+        planExpiryDate: expiryDate,
+        updatedAt: new Date()
+      };
+
+      if (!editingGym) {
+        gymData.createdAt = new Date();
+      }
+
+      // Write directly to Firestore using Client SDK
+      await setDoc(doc(db, 'gyms', targetUid), gymData, { merge: true });
+      await setDoc(doc(db, 'users', targetUid), {
+        email: formData.email,
+        gymId: targetUid,
+        role: "gym_owner"
+      }, { merge: true });
+
       setIsModalOpen(false);
-      setName(''); setEmail(''); setPassword('');
     } catch (err) {
-      console.error("Full error creating gym:", err);
-      console.log("Error code:", err.code);
-      console.log("Error details:", err.details);
+      console.error("Error saving gym:", err);
       setError(err.message);
     } finally {
-      setCreating(false);
+      setSaving(false);
     }
   }
 
   async function handleDisableToggle(gymId, currentStatus) {
     if(!window.confirm(`Are you sure you want to ${currentStatus === 'disabled' ? 'enable' : 'disable'} this gym?`)) return;
     try {
-      const functions = getFunctions();
+      const functions = getFunctions(app, 'us-central1');
       const disableGym = httpsCallable(functions, 'disableGym');
       await disableGym({ uid: gymId, disabled: currentStatus !== 'disabled' });
     } catch (err) {
@@ -91,8 +177,8 @@ export default function AdminGyms() {
             className="bg-zinc-900 border border-zinc-800 rounded-full pl-10 pr-4 py-2 text-sm w-64 focus:border-orange-500 outline-none"
           />
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="bg-orange-500 text-zinc-950 font-bold px-4 py-2 rounded-full text-sm hover:bg-orange-600 transition">
-          + Create Gym
+        <button onClick={openCreateModal} className="bg-orange-500 text-zinc-950 font-bold px-4 py-2 rounded-full text-sm hover:bg-orange-600 transition">
+          + Configure New Gym
         </button>
       </div>
 
@@ -130,9 +216,12 @@ export default function AdminGyms() {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <div className="flex justify-end gap-2">
-                    <button onClick={() => handleDisableToggle(gym.id, gym.status)} className="text-zinc-400 hover:text-white p-1">
+                  <div className="flex justify-end items-center gap-2">
+                    <button onClick={() => handleDisableToggle(gym.id, gym.status)} title={gym.status === 'disabled' ? 'Enable Gym' : 'Disable Gym'} className="text-zinc-400 hover:text-white p-1">
                       <span className="material-symbols-outlined text-sm">{gym.status === 'disabled' ? 'play_arrow' : 'block'}</span>
+                    </button>
+                    <button onClick={() => openEditModal(gym)} className="text-blue-500 hover:text-blue-400 font-medium p-1 ml-2">
+                      Edit
                     </button>
                     <Link to={`/admin/gyms/${gym.id}`} className="text-orange-500 hover:text-orange-400 font-medium p-1">
                       Details
@@ -157,27 +246,83 @@ export default function AdminGyms() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-md p-6">
-            <h2 className="text-xl font-bold mb-4">Create New Gym</h2>
-            <form onSubmit={handleCreateGym} className="space-y-4">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-2xl p-6 my-8">
+            <h2 className="text-xl font-bold mb-4">{editingGym ? 'Edit Gym Profile' : 'Configure New Gym'}</h2>
+            
+            {!editingGym && (
+              <div className="mb-6 bg-orange-500/10 border border-orange-500/30 p-4 rounded-lg">
+                <p className="text-sm text-orange-200">
+                  <strong className="text-orange-500 block mb-1">Important:</strong> 
+                  Ensure you have already created the user account in the Firebase Authentication console. 
+                  Paste their exact UID below to link this profile to their account.
+                </p>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveGym} className="space-y-4">
               {error && <div className="text-red-500 text-sm bg-red-500/10 p-3 rounded">{error}</div>}
-              <div>
-                <label className="block text-xs uppercase text-zinc-400 mb-1">Gym Name</label>
-                <input required value={name} onChange={e=>setName(e.target.value)} type="text" className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white outline-none focus:border-orange-500" />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {!editingGym && (
+                  <div className="md:col-span-2">
+                    <label className="block text-xs uppercase text-zinc-400 mb-1">Firebase Auth UID *</label>
+                    <input required value={formData.uid} onChange={e=>setFormData({...formData, uid: e.target.value})} type="text" placeholder="e.g. jB2x8V..." className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white outline-none focus:border-orange-500" />
+                  </div>
+                )}
+                
+                <div>
+                  <label className="block text-xs uppercase text-zinc-400 mb-1">Gym Name *</label>
+                  <input required value={formData.gymName} onChange={e=>setFormData({...formData, gymName: e.target.value})} type="text" className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white outline-none focus:border-orange-500" />
+                </div>
+                
+                <div>
+                  <label className="block text-xs uppercase text-zinc-400 mb-1">Owner Name *</label>
+                  <input required value={formData.ownerName} onChange={e=>setFormData({...formData, ownerName: e.target.value})} type="text" className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white outline-none focus:border-orange-500" />
+                </div>
+
+                <div>
+                  <label className="block text-xs uppercase text-zinc-400 mb-1">Owner Email *</label>
+                  <input required value={formData.email} onChange={e=>setFormData({...formData, email: e.target.value})} type="email" className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white outline-none focus:border-orange-500" />
+                </div>
+
+                <div>
+                  <label className="block text-xs uppercase text-zinc-400 mb-1">Phone</label>
+                  <input value={formData.phone} onChange={e=>setFormData({...formData, phone: e.target.value})} type="tel" className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white outline-none focus:border-orange-500" />
+                </div>
+
+                <div>
+                  <label className="block text-xs uppercase text-zinc-400 mb-1">Plan</label>
+                  <select value={formData.plan} onChange={e=>setFormData({...formData, plan: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white outline-none focus:border-orange-500">
+                    <option value="trial">Trial</option>
+                    <option value="pro">Pro</option>
+                    <option value="premium">Premium</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs uppercase text-zinc-400 mb-1">Status</label>
+                  <select value={formData.status} onChange={e=>setFormData({...formData, status: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white outline-none focus:border-orange-500">
+                    <option value="active">Active</option>
+                    <option value="disabled">Disabled</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs uppercase text-zinc-400 mb-1">Plan Start Date</label>
+                  <input type="date" value={formData.planStartDate} onChange={e=>setFormData({...formData, planStartDate: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white outline-none focus:border-orange-500 [color-scheme:dark]" />
+                </div>
+
+                <div>
+                  <label className="block text-xs uppercase text-zinc-400 mb-1">Plan Expiry Date</label>
+                  <input type="date" value={formData.planExpiryDate} onChange={e=>setFormData({...formData, planExpiryDate: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white outline-none focus:border-orange-500 [color-scheme:dark]" />
+                </div>
               </div>
-              <div>
-                <label className="block text-xs uppercase text-zinc-400 mb-1">Owner Email</label>
-                <input required value={email} onChange={e=>setEmail(e.target.value)} type="email" className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white outline-none focus:border-orange-500" />
-              </div>
-              <div>
-                <label className="block text-xs uppercase text-zinc-400 mb-1">Temporary Password</label>
-                <input required value={password} onChange={e=>setPassword(e.target.value)} type="text" className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white outline-none focus:border-orange-500" />
-              </div>
-              <div className="flex gap-3 justify-end mt-6">
+
+              <div className="flex gap-3 justify-end mt-6 pt-4 border-t border-zinc-800">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white">Cancel</button>
-                <button type="submit" disabled={creating} className="px-4 py-2 text-sm bg-orange-500 text-zinc-950 font-bold rounded hover:bg-orange-600 disabled:opacity-50">
-                  {creating ? 'Creating...' : 'Create Gym'}
+                <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-orange-500 text-zinc-950 font-bold rounded hover:bg-orange-600 disabled:opacity-50">
+                  {saving ? 'Saving...' : (editingGym ? 'Save Changes' : 'Configure Gym')}
                 </button>
               </div>
             </form>

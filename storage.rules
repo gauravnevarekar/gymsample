@@ -1,0 +1,20 @@
+rules_version = '2';
+
+// Craft rules based on data in your Firestore database
+// allow write: if firestore.get(
+//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Gym Owner can only access their own gym's member photos
+    match /member-photos/{gymId}/{memberId}/{fileName} {
+      // Allow read and write if the authenticated user's ID matches the gymId in the path
+      allow read, write: if request.auth != null && request.auth.uid == gymId;
+    }
+    
+    // Deny all other access by default
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

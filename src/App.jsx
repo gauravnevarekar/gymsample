@@ -10,6 +10,7 @@ import Payments from './pages/Payments';
 import Expenses from './pages/Expenses';
 import Settings from './pages/Settings';
 import Notifications from './pages/Notifications';
+import ForceChangePassword from './pages/ForceChangePassword';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -17,6 +18,7 @@ import AdminGyms from './pages/admin/AdminGyms';
 import AdminGymDetails from './pages/admin/AdminGymDetails';
 import AdminPlans from './pages/admin/AdminPlans';
 import AdminSupport from './pages/admin/AdminSupport';
+import AdminSettings from './pages/admin/AdminSettings';
 
 export default function App() {
   const { currentUser, userRole } = useAuth();
@@ -25,6 +27,10 @@ export default function App() {
     <Routes>
       <Route path="/login" element={
         !currentUser ? <Login /> : (userRole === 'super_admin' ? <Navigate to="/admin" replace /> : <Navigate to="/" replace />)
+      } />
+      
+      <Route path="/force-change-password" element={
+        currentUser ? <ForceChangePassword /> : <Navigate to="/login" replace />
       } />
       
       {/* Gym Owner Routes */}
@@ -47,7 +53,7 @@ export default function App() {
           <Route path="gyms/:id" element={<AdminGymDetails />} />
           <Route path="plans" element={<AdminPlans />} />
           <Route path="support" element={<AdminSupport />} />
-          <Route path="settings" element={<div className="p-8 text-white">Admin Settings</div>} />
+          <Route path="settings" element={<AdminSettings />} />
         </Route>
       </Route>
 

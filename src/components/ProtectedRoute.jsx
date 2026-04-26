@@ -2,7 +2,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function ProtectedRoute({ allowedRole }) {
-  const { currentUser, userRole, gymStatus, planExpiryDate, logout } = useAuth();
+  const { currentUser, userRole, gymStatus, mustChangePassword, planExpiryDate, logout } = useAuth();
 
   if (!currentUser) {
     return <Navigate to="/login" replace />;
@@ -19,6 +19,10 @@ export default function ProtectedRoute({ allowedRole }) {
 
   // Intercept gym owner based on status
   if (allowedRole === 'gym_owner' && userRole === 'gym_owner') {
+    // Intercept forced password change before everything else
+    if (mustChangePassword === true) {
+      return <Navigate to="/force-change-password" replace />;
+    }
     const now = new Date();
     const expiry = planExpiryDate ? new Date(planExpiryDate) : null;
     const isExpiredByDate = expiry && now > expiry;

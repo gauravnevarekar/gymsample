@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db, storage } from '../lib/firebase';
 import { buildMembershipFinancials, formatCurrency, formatDisplayDate } from '../lib/formatters';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { motion, AnimatePresence } from 'framer-motion';
 import Avatar from '../components/Avatar';
 import { compressImage } from '../lib/imageUtils';
@@ -279,12 +279,14 @@ export default function Members() {
         setIsUploading(true);
         try {
           const compressedFile = await compressImage(photoFile);
-          const storageRef = ref(storage, `gyms/${currentUser.uid}/members/${targetMemberId}/profile.jpg`);
+          const photoPath = `member-photos/${currentUser.uid}/${targetMemberId}/profile.jpg`;
+          const storageRef = ref(storage, photoPath);
           await uploadBytes(storageRef, compressedFile);
           const photoURL = await getDownloadURL(storageRef);
           
           await updateDoc(doc(db, 'gyms', currentUser.uid, 'members', targetMemberId), {
-            photoURL
+            photoURL,
+            photoPath
           });
         } catch (uploadErr) {
           console.error("Photo upload failed:", uploadErr);
@@ -363,7 +365,22 @@ export default function Members() {
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this member?')) {
-      await deleteDoc(doc(db, 'gyms', currentUser.uid, 'members', id));
+      const memberToDelete = members.find(m => m.id === id);
+      
+      try {
+        // Delete the member document from Firestore
+        await deleteDoc(doc(db, 'gyms', currentUser.uid, 'members', id));
+        
+        // Clean up the photo from Storage if it exists
+        if (memberToDelete?.photoPath) {
+          const photoRef = ref(storage, memberToDelete.photoPath);
+          await deleteObject(photoRef).catch((err) => {
+            console.error('Failed to delete profile photo from storage:', err);
+          });
+        }
+      } catch (err) {
+        console.error('Failed to delete member:', err);
+      }
     }
   };
 

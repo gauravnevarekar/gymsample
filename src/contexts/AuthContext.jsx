@@ -4,8 +4,9 @@ import {
   signOut, 
   onAuthStateChanged 
 } from 'firebase/auth';
-import { auth, db } from '../lib/firebase';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { auth, db, messagingPromise } from '../lib/firebase';
+import { doc, getDoc, setDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { getToken } from 'firebase/messaging';
 
 const AuthContext = createContext();
 
@@ -13,6 +14,7 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [gymStatus, setGymStatus] = useState('active');
+  const [mustChangePassword, setMustChangePassword] = useState(false);
   const [planExpiryDate, setPlanExpiryDate] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -69,6 +71,7 @@ export function AuthProvider({ children }) {
       } else {
         setUserRole(null);
         setGymStatus('active');
+        setMustChangePassword(false);
         setPlanExpiryDate(null);
       }
       setCurrentUser(user);
@@ -87,9 +90,32 @@ export function AuthProvider({ children }) {
         if (snap.exists()) {
           const data = snap.data();
           setGymStatus(data.status || 'active');
+          setMustChangePassword(data.mustChangePassword || false);
           setPlanExpiryDate(data.planExpiryDate || null);
         }
       });
+
+      // Register FCM Token
+      const registerFCMToken = async () => {
+        try {
+          const messaging = await messagingPromise;
+          if (!messaging) return; // Browser doesn't support FCM
+          
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            const currentToken = await getToken(messaging, { 
+              vapidKey: 'BKtS0Lfj_Hz9R4S22Ys-YEg1f8OimxC7ujki8P7MPS23WBMaaVntueMEpq95yrFLhWfLXhpkZa7YnaUhR2Bm70s' 
+            });
+            if (currentToken) {
+              await updateDoc(gymDocRef, { fcmToken: currentToken });
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to register FCM token:', err);
+        }
+      };
+
+      registerFCMToken();
     }
     return () => unsubscribeGym();
   }, [currentUser, userRole]);
@@ -98,6 +124,7 @@ export function AuthProvider({ children }) {
     currentUser,
     userRole,
     gymStatus,
+    mustChangePassword,
     planExpiryDate,
     login,
     logout
