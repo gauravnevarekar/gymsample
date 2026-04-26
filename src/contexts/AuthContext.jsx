@@ -5,13 +5,15 @@ import {
   onAuthStateChanged 
 } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
+  const [gymStatus, setGymStatus] = useState('active');
+  const [planExpiryDate, setPlanExpiryDate] = useState(null);
   const [loading, setLoading] = useState(true);
 
   function login(email, password) {
@@ -49,9 +51,15 @@ export function AuthProvider({ children }) {
             const gymDocSnap = await getDoc(gymDocRef);
 
             if (!gymDocSnap.exists()) {
+              const now = new Date();
+              const expiry = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
               await setDoc(gymDocRef, {
                 name: 'GYMFLOW',
-                createdAt: new Date().toISOString()
+                plan: 'trial',
+                status: 'active',
+                planStartDate: now.toISOString(),
+                planExpiryDate: expiry.toISOString(),
+                createdAt: now.toISOString()
               });
             }
           }
@@ -60,6 +68,8 @@ export function AuthProvider({ children }) {
         }
       } else {
         setUserRole(null);
+        setGymStatus('active');
+        setPlanExpiryDate(null);
       }
       setCurrentUser(user);
       setLoading(false);
@@ -68,16 +78,42 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
+  // Real-time listener for gym status access control
+  useEffect(() => {
+    let unsubscribeGym = () => {};
+    if (currentUser && userRole === 'gym_owner') {
+      const gymDocRef = doc(db, 'gyms', currentUser.uid);
+      unsubscribeGym = onSnapshot(gymDocRef, (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          setGymStatus(data.status || 'active');
+          setPlanExpiryDate(data.planExpiryDate || null);
+        }
+      });
+    }
+    return () => unsubscribeGym();
+  }, [currentUser, userRole]);
+
   const value = {
     currentUser,
     userRole,
+    gymStatus,
+    planExpiryDate,
     login,
     logout
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-zinc-800 border-t-orange-500 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }

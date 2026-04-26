@@ -34,13 +34,17 @@ exports.createGym = onCall(async (request) => {
     await admin.auth().setCustomUserClaims(userRecord.uid, { gym_owner: true });
 
     // 3. Create initial gym document
+    const now = new Date();
+    const expiry = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days from now
     await admin.firestore().collection('gyms').doc(userRecord.uid).set({
       name,
       ownerEmail: email,
       ownerName: name, // can be updated later
       plan: 'trial',
       status: 'active',
-      createdAt: new Date().toISOString()
+      planStartDate: now.toISOString(),
+      planExpiryDate: expiry.toISOString(),
+      createdAt: now.toISOString()
     });
 
     // 4. Create user document
@@ -62,7 +66,8 @@ exports.disableGym = onCall(async (request) => {
   if (!uid) throw new HttpsError('invalid-argument', 'Missing uid.');
 
   try {
-    await admin.auth().updateUser(uid, { disabled });
+    // Only update the Firestore status field to control app access, 
+    // keeping Firebase Authentication active as requested for the MVP.
     await admin.firestore().collection('gyms').doc(uid).update({
       status: disabled ? 'disabled' : 'active'
     });
