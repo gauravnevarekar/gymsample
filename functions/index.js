@@ -8,7 +8,8 @@ setGlobalOptions({ maxInstances: 10 });
 
 // Helper to verify super_admin
 function checkSuperAdmin(request) {
-  if (!request.auth || !request.auth.token.super_admin) {
+  if (!request.auth || request.auth.token.role !== "super_admin") {
+    console.error("Auth check failed:", request.auth?.token);
     throw new HttpsError('permission-denied', 'Only super_admin can perform this action.');
   }
 }
@@ -17,45 +18,68 @@ exports.createGym = onCall(async (request) => {
   checkSuperAdmin(request);
   
   const { email, password, name } = request.data;
+  console.log("Create Gym called with:", { email, name });
   
   if (!email || !password || !name) {
-    throw new HttpsError('invalid-argument', 'Missing required fields.');
+    throw new HttpsError('invalid-argument', 'Missing required fields: email, password, and gym name are required.');
   }
 
   try {
     // 1. Create auth user
+    console.log("Creating auth user...");
     const userRecord = await admin.auth().createUser({
       email,
       password,
       displayName: name,
     });
+    console.log("Auth user created:", userRecord.uid);
 
     // 2. Set custom claim
-    await admin.auth().setCustomUserClaims(userRecord.uid, { gym_owner: true });
+    console.log("Setting custom claims...");
+    await admin.auth().setCustomUserClaims(userRecord.uid, { role: "gym_owner" });
+    console.log("Custom claims set: { role: 'gym_owner' }");
 
     // 3. Create initial gym document
+    console.log("Creating gym document...");
     const now = new Date();
     const expiry = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days from now
     await admin.firestore().collection('gyms').doc(userRecord.uid).set({
-      name,
-      ownerEmail: email,
-      ownerName: name, // can be updated later
+      gymName: name,
+      ownerName: name,
+      email: email,
+      phone: "", // placeholder
       plan: 'trial',
       status: 'active',
       planStartDate: now.toISOString(),
       planExpiryDate: expiry.toISOString(),
       createdAt: now.toISOString()
     });
+    console.log("Gym document created.");
 
     // 4. Create user document
+    console.log("Creating user document...");
     await admin.firestore().collection('users').doc(userRecord.uid).set({
       email,
       gymId: userRecord.uid
     });
+    console.log("User document created.");
 
     return { success: true, uid: userRecord.uid };
   } catch (error) {
-    throw new HttpsError('internal', error.message);
+    console.error("Error creating gym:", error);
+    
+    // Handle specific Auth errors
+    if (error.code === 'auth/email-already-exists') {
+      throw new HttpsError('already-exists', 'This email is already registered to another gym.');
+    }
+    if (error.code === 'auth/invalid-password') {
+      throw new HttpsError('invalid-argument', 'The password is too weak or invalid.');
+    }
+    if (error.code === 'auth/invalid-email') {
+      throw new HttpsError('invalid-argument', 'The email address is invalid.');
+    }
+
+    throw new HttpsError('internal', error.message || 'An unexpected error occurred while creating the gym.');
   }
 });
 

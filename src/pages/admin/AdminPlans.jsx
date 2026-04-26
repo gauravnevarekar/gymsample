@@ -4,6 +4,8 @@ import { db } from '../../lib/firebase';
 
 export default function AdminPlans() {
   const [gyms, setGyms] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'gyms'), (snapshot) => {
@@ -14,9 +16,35 @@ export default function AdminPlans() {
         }
       });
       setGyms(g);
+      setLoading(false);
+    }, (err) => {
+      console.error("Firestore error in AdminPlans:", err);
+      setError("Failed to load plans: " + err.message);
+      setLoading(false);
     });
     return unsubscribe;
   }, []);
+
+  const formatDate = (date) => {
+    if (!date) return '';
+    try {
+      if (typeof date === 'string') return date.split('T')[0];
+      if (date.toDate) return date.toDate().toISOString().split('T')[0];
+      return new Date(date).toISOString().split('T')[0];
+    } catch (e) {
+      return '';
+    }
+  };
+
+  const isDateExpired = (date) => {
+    if (!date) return false;
+    try {
+      const d = date.toDate ? date.toDate() : new Date(date);
+      return new Date() > d;
+    } catch (e) {
+      return false;
+    }
+  };
 
   async function updatePlan(id, newPlan) {
     try {
@@ -47,7 +75,7 @@ export default function AdminPlans() {
 
   async function extendExpiry(id, currentExpiry, days) {
     try {
-      const baseDate = currentExpiry ? new Date(currentExpiry) : new Date();
+      const baseDate = currentExpiry ? (currentExpiry.toDate ? currentExpiry.toDate() : new Date(currentExpiry)) : new Date();
       const newExpiry = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
       await updateDoc(doc(db, 'gyms', id), { 
         planExpiryDate: newExpiry.toISOString(),
@@ -72,28 +100,42 @@ export default function AdminPlans() {
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-800/50">
-            {gyms.map(gym => {
-              const isExpired = gym.planExpiryDate && new Date() > new Date(gym.planExpiryDate);
+            {loading ? (
+              <tr>
+                <td colSpan="5" className="px-6 py-12 text-center">
+                  <div className="inline-block w-6 h-6 border-2 border-zinc-800 border-t-orange-500 rounded-full animate-spin"></div>
+                </td>
+              </tr>
+            ) : error ? (
+              <tr>
+                <td colSpan="5" className="px-6 py-12 text-center text-red-500 bg-red-500/5">{error}</td>
+              </tr>
+            ) : gyms.length === 0 ? (
+              <tr>
+                <td colSpan="5" className="px-6 py-12 text-center text-zinc-500">No gyms found.</td>
+              </tr>
+            ) : gyms.map(gym => {
+              const isExpired = isDateExpired(gym.planExpiryDate);
               const effectiveStatus = gym.status === 'disabled' ? 'disabled' : (isExpired ? 'expired' : gym.status);
+              const displayPlan = (gym.plan === 'pro' || gym.plan === 'premium') ? 'paid' : (gym.plan || 'trial');
               
               return (
               <tr key={gym.id} className="hover:bg-zinc-800/20">
                 <td className="px-6 py-4">
                   <div className="font-bold flex items-center gap-2">
-                    {gym.name}
+                    {gym.gymName || gym.name || 'Unnamed Gym'}
                     {isExpired && gym.status === 'active' && <span className="text-[9px] bg-yellow-500/10 text-yellow-500 px-1 rounded uppercase tracking-wider">Auto-Expired</span>}
                   </div>
-                  <div className="text-zinc-500 text-xs">{gym.ownerEmail}</div>
+                  <div className="text-zinc-500 text-xs">{gym.email || gym.ownerEmail || '-'}</div>
                 </td>
                 <td className="px-6 py-4">
                   <select 
-                    value={gym.plan || 'trial'} 
+                    value={displayPlan} 
                     onChange={(e) => updatePlan(gym.id, e.target.value)}
                     className="bg-zinc-800 border-none text-white rounded text-xs p-1 outline-none"
                   >
                     <option value="trial">Trial</option>
-                    <option value="pro">Pro</option>
-                    <option value="premium">Premium</option>
+                    <option value="paid">Paid</option>
                   </select>
                 </td>
                 <td className="px-6 py-4">
@@ -116,7 +158,7 @@ export default function AdminPlans() {
                     <label className="text-[10px] text-zinc-500 uppercase w-12">Start</label>
                     <input 
                       type="date" 
-                      value={gym.planStartDate ? gym.planStartDate.split('T')[0] : ''} 
+                      value={formatDate(gym.planStartDate)} 
                       onChange={(e) => updateDate(gym.id, 'planStartDate', e.target.value)}
                       className="bg-zinc-800 border-none text-white rounded text-xs p-1 outline-none"
                     />
@@ -125,7 +167,7 @@ export default function AdminPlans() {
                     <label className="text-[10px] text-zinc-500 uppercase w-12">Expiry</label>
                     <input 
                       type="date" 
-                      value={gym.planExpiryDate ? gym.planExpiryDate.split('T')[0] : ''} 
+                      value={formatDate(gym.planExpiryDate)} 
                       onChange={(e) => updateDate(gym.id, 'planExpiryDate', e.target.value)}
                       className={`border-none rounded text-xs p-1 outline-none ${isExpired ? 'bg-red-500/20 text-red-500' : 'bg-zinc-800 text-white'}`}
                     />

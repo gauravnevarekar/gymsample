@@ -10,6 +10,7 @@ export default function AdminDashboard() {
     expired: 0
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'gyms'), (snapshot) => {
@@ -19,13 +20,19 @@ export default function AdminDashboard() {
       snapshot.forEach((doc) => {
         total++;
         const data = doc.data();
-        if (data.status === 'active') active++;
-        if (data.status === 'expired' || data.status === 'disabled') expired++;
+        const isExpired = data.planExpiryDate && (data.planExpiryDate.toDate ? data.planExpiryDate.toDate() : new Date(data.planExpiryDate)) < new Date();
+        
+        if (data.status === 'active' && !isExpired) active++;
+        if (data.status === 'expired' || data.status === 'disabled' || (data.status === 'active' && isExpired)) expired++;
         if (data.plan === 'trial') trial++;
       });
       
       console.log("Calculated stats:", { total, active, trial, expired });
       setStats({ total, active, trial, expired });
+      setLoading(false);
+    }, (err) => {
+      console.error("Firestore error in AdminDashboard:", err);
+      setError("Permission denied. Ensure rules are deployed and session is refreshed.");
       setLoading(false);
     });
 
@@ -41,6 +48,12 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-4 rounded-xl flex items-center gap-3">
+          <span className="material-symbols-outlined">error</span>
+          <p className="text-sm font-medium">{error}</p>
+        </div>
+      )}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[1, 2, 3, 4].map(i => (

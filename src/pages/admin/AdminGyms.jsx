@@ -24,6 +24,10 @@ export default function AdminGyms() {
       console.log("Fetched gyms:", g); // Debug logging
       setGyms(g);
       setLoading(false);
+    }, (err) => {
+      console.error("Firestore error in AdminGyms:", err);
+      setError("Failed to load gyms: " + err.message);
+      setLoading(false);
     });
     return unsubscribe;
   }, []);
@@ -48,6 +52,9 @@ export default function AdminGyms() {
       setIsModalOpen(false);
       setName(''); setEmail(''); setPassword('');
     } catch (err) {
+      console.error("Full error creating gym:", err);
+      console.log("Error code:", err.code);
+      console.log("Error details:", err.details);
       setError(err.message);
     } finally {
       setCreating(false);
@@ -67,6 +74,12 @@ export default function AdminGyms() {
 
   return (
     <div className="space-y-6 text-zinc-100">
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-4 rounded-xl flex items-center gap-3">
+          <span className="material-symbols-outlined">error</span>
+          <p className="text-sm font-medium">{error}</p>
+        </div>
+      )}
       <div className="flex justify-between items-center">
         <div className="relative">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">search</span>
@@ -104,7 +117,7 @@ export default function AdminGyms() {
                 </td>
                 <td className="px-6 py-4">
                   <span className="uppercase text-[10px] tracking-wider font-bold bg-zinc-800 px-2 py-1 rounded">
-                    {gym.plan || 'trial'}
+                    {(gym.plan === 'pro' || gym.plan === 'premium') ? 'paid' : (gym.plan || 'trial')}
                   </span>
                 </td>
                 <td className="px-6 py-4">
