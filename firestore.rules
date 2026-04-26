@@ -7,26 +7,31 @@ service cloud.firestore {
     function isOwner(uid) {
       return request.auth != null && request.auth.uid == uid;
     }
+    
+    // Check if the user has the super_admin custom claim
+    function isSuperAdmin() {
+      return request.auth != null && request.auth.token.super_admin == true;
+    }
 
     // Isolate users collection
     match /users/{uid} {
-      allow read, write: if isOwner(uid);
+      allow read, write: if isOwner(uid) || isSuperAdmin();
     }
     
     // Isolate gyms collection
     match /gyms/{gymId} {
       // Allows reading/writing the gym document itself
-      allow read, write: if isOwner(gymId);
+      allow read, write: if isOwner(gymId) || isSuperAdmin();
       
-      // Subcollection isolation: only the owner can manage these
+      // Subcollection isolation
       match /members/{memberId} {
-        allow read, write: if isOwner(gymId);
+        allow read, write: if isOwner(gymId) || isSuperAdmin();
       }
       match /payments/{paymentId} {
-        allow read, create: if isOwner(gymId);
+        allow read, create: if isOwner(gymId) || isSuperAdmin();
       }
       match /expenses/{expenseId} {
-        allow read, write: if isOwner(gymId);
+        allow read, write: if isOwner(gymId) || isSuperAdmin();
       }
     }
   }

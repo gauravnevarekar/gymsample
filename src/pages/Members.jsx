@@ -214,14 +214,6 @@ export default function Members() {
       setFormError('');
 
       const normalizedPhone = normalizePhone(formData.phone);
-      const duplicatePhone = members.find((member) => (
-        member.id !== editingId && normalizePhone(member.phone) === normalizedPhone
-      ));
-
-      if (duplicatePhone) {
-        setFormError('Phone number must be unique.');
-        return;
-      }
 
       const payload = {
         name: formData.name.trim(),

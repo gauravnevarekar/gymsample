@@ -1,32 +1,106 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { setGlobalOptions } = require("firebase-functions/v2");
+const admin = require("firebase-admin");
 
-const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
-const logger = require("firebase-functions/logger");
+admin.initializeApp();
 
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
 setGlobalOptions({ maxInstances: 10 });
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+// Helper to verify super_admin
+function checkSuperAdmin(request) {
+  if (!request.auth || !request.auth.token.super_admin) {
+    throw new HttpsError('permission-denied', 'Only super_admin can perform this action.');
+  }
+}
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+exports.createGym = onCall(async (request) => {
+  checkSuperAdmin(request);
+  
+  const { email, password, name } = request.data;
+  
+  if (!email || !password || !name) {
+    throw new HttpsError('invalid-argument', 'Missing required fields.');
+  }
+
+  try {
+    // 1. Create auth user
+    const userRecord = await admin.auth().createUser({
+      email,
+      password,
+      displayName: name,
+    });
+
+    // 2. Set custom claim
+    await admin.auth().setCustomUserClaims(userRecord.uid, { gym_owner: true });
+
+    // 3. Create initial gym document
+    await admin.firestore().collection('gyms').doc(userRecord.uid).set({
+      name,
+      ownerEmail: email,
+      ownerName: name, // can be updated later
+      plan: 'trial',
+      status: 'active',
+      createdAt: new Date().toISOString()
+    });
+
+    // 4. Create user document
+    await admin.firestore().collection('users').doc(userRecord.uid).set({
+      email,
+      gymId: userRecord.uid
+    });
+
+    return { success: true, uid: userRecord.uid };
+  } catch (error) {
+    throw new HttpsError('internal', error.message);
+  }
+});
+
+exports.disableGym = onCall(async (request) => {
+  checkSuperAdmin(request);
+  
+  const { uid, disabled } = request.data;
+  if (!uid) throw new HttpsError('invalid-argument', 'Missing uid.');
+
+  try {
+    await admin.auth().updateUser(uid, { disabled });
+    await admin.firestore().collection('gyms').doc(uid).update({
+      status: disabled ? 'disabled' : 'active'
+    });
+    return { success: true };
+  } catch (error) {
+    throw new HttpsError('internal', error.message);
+  }
+});
+
+exports.resetGymPassword = onCall(async (request) => {
+  checkSuperAdmin(request);
+  
+  const { email } = request.data;
+  if (!email) throw new HttpsError('invalid-argument', 'Missing email.');
+
+  try {
+    const link = await admin.auth().generatePasswordResetLink(email);
+    return { success: true, link };
+  } catch (error) {
+    throw new HttpsError('internal', error.message);
+  }
+});
+
+exports.deleteGym = onCall(async (request) => {
+  checkSuperAdmin(request);
+  
+  const { uid } = request.data;
+  if (!uid) throw new HttpsError('invalid-argument', 'Missing uid.');
+
+  try {
+    await admin.auth().deleteUser(uid);
+    // Optionally delete or mark the gym document as deleted
+    await admin.firestore().collection('gyms').doc(uid).update({
+      status: 'deleted',
+      deletedAt: new Date().toISOString()
+    });
+    return { success: true };
+  } catch (error) {
+    throw new HttpsError('internal', error.message);
+  }
+});

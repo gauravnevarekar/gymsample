@@ -11,6 +11,7 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
   function login(email, password) {
@@ -25,30 +26,40 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
-          // 1. Check if user document exists
-          const userDocRef = doc(db, 'users', user.uid);
-          const userDocSnap = await getDoc(userDocRef);
+          // Fetch custom claims to determine role
+          const idTokenResult = await user.getIdTokenResult();
+          const isSuperAdmin = !!idTokenResult.claims.super_admin;
+          setUserRole(isSuperAdmin ? 'super_admin' : 'gym_owner');
 
-          if (!userDocSnap.exists()) {
-            await setDoc(userDocRef, {
-              gymId: user.uid,
-              email: user.email
-            });
-          }
+          // Only create default documents if the user is a gym_owner
+          if (!isSuperAdmin) {
+            // 1. Check if user document exists
+            const userDocRef = doc(db, 'users', user.uid);
+            const userDocSnap = await getDoc(userDocRef);
 
-          // 2. Check if gym document exists
-          const gymDocRef = doc(db, 'gyms', user.uid);
-          const gymDocSnap = await getDoc(gymDocRef);
+            if (!userDocSnap.exists()) {
+              await setDoc(userDocRef, {
+                gymId: user.uid,
+                email: user.email
+              });
+            }
 
-          if (!gymDocSnap.exists()) {
-            await setDoc(gymDocRef, {
-              name: 'GYMFLOW',
-              createdAt: new Date().toISOString()
-            });
+            // 2. Check if gym document exists
+            const gymDocRef = doc(db, 'gyms', user.uid);
+            const gymDocSnap = await getDoc(gymDocRef);
+
+            if (!gymDocSnap.exists()) {
+              await setDoc(gymDocRef, {
+                name: 'GYMFLOW',
+                createdAt: new Date().toISOString()
+              });
+            }
           }
         } catch (err) {
           console.error("Error setting up user/gym docs:", err);
         }
+      } else {
+        setUserRole(null);
       }
       setCurrentUser(user);
       setLoading(false);
@@ -59,6 +70,7 @@ export function AuthProvider({ children }) {
 
   const value = {
     currentUser,
+    userRole,
     login,
     logout
   };
@@ -73,3 +85,4 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   return useContext(AuthContext);
 }
+
