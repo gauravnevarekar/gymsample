@@ -16,8 +16,14 @@ export default function Login() {
     try {
       setError('');
       setLoading(true);
-      await login(email, password);
-      navigate('/');
+      const userCredential = await login(email, password);
+      const idTokenResult = await userCredential.user.getIdTokenResult();
+      
+      if (idTokenResult.claims.role === 'super_admin') {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError('Failed to log in: ' + err.message);
     } finally {

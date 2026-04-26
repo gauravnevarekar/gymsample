@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
         try {
           // Fetch custom claims to determine role
           const idTokenResult = await user.getIdTokenResult();
-          const isSuperAdmin = !!idTokenResult.claims.super_admin;
+          const isSuperAdmin = idTokenResult.claims.role === 'super_admin';
           setUserRole(isSuperAdmin ? 'super_admin' : 'gym_owner');
 
           // Only create default documents if the user is a gym_owner

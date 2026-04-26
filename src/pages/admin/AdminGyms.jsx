@@ -7,6 +7,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 export default function AdminGyms() {
   const [gyms, setGyms] = useState([]);
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // New gym form
@@ -20,15 +21,21 @@ export default function AdminGyms() {
     const unsubscribe = onSnapshot(collection(db, 'gyms'), (snapshot) => {
       const g = [];
       snapshot.forEach(doc => g.push({ id: doc.id, ...doc.data() }));
+      console.log("Fetched gyms:", g); // Debug logging
       setGyms(g);
+      setLoading(false);
     });
     return unsubscribe;
   }, []);
 
-  const filteredGyms = gyms.filter(g => 
-    g.name?.toLowerCase().includes(search.toLowerCase()) || 
-    g.ownerEmail?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredGyms = gyms.filter(g => {
+    const searchTerm = search.toLowerCase();
+    return (
+      (g.gymName?.toLowerCase() || "").includes(searchTerm) || 
+      (g.email?.toLowerCase() || "").includes(searchTerm) ||
+      (g.ownerName?.toLowerCase() || "").includes(searchTerm)
+    );
+  });
 
   async function handleCreateGym(e) {
     e.preventDefault();
@@ -90,10 +97,10 @@ export default function AdminGyms() {
           <tbody className="divide-y divide-zinc-800/50">
             {filteredGyms.map(gym => (
               <tr key={gym.id} className="hover:bg-zinc-800/20 transition-colors">
-                <td className="px-6 py-4 font-medium">{gym.name}</td>
+                <td className="px-6 py-4 font-medium">{gym.gymName || gym.name || 'Unnamed Gym'}</td>
                 <td className="px-6 py-4">
                   <div>{gym.ownerName || '-'}</div>
-                  <div className="text-zinc-500 text-xs">{gym.ownerEmail || gym.email || '-'}</div>
+                  <div className="text-zinc-500 text-xs">{gym.email || '-'}</div>
                 </td>
                 <td className="px-6 py-4">
                   <span className="uppercase text-[10px] tracking-wider font-bold bg-zinc-800 px-2 py-1 rounded">
@@ -121,7 +128,13 @@ export default function AdminGyms() {
                 </td>
               </tr>
             ))}
-            {filteredGyms.length === 0 && (
+            {loading ? (
+              <tr>
+                <td colSpan="5" className="px-6 py-12 text-center">
+                  <div className="inline-block w-6 h-6 border-2 border-zinc-800 border-t-orange-500 rounded-full animate-spin"></div>
+                </td>
+              </tr>
+            ) : filteredGyms.length === 0 && (
               <tr>
                 <td colSpan="5" className="px-6 py-8 text-center text-zinc-500">No gyms found.</td>
               </tr>

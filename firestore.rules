@@ -10,7 +10,7 @@ service cloud.firestore {
     
     // Check if the user has the super_admin custom claim
     function isSuperAdmin() {
-      return request.auth != null && request.auth.token.super_admin == true;
+      return request.auth != null && request.auth.token.role == "super_admin";
     }
 
     // Isolate users collection
