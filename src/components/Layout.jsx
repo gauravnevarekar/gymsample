@@ -21,11 +21,12 @@ export default function Layout() {
     }
   }
 
+  const [readTick, setReadTick] = useState(0);
+
   useEffect(() => {
     if (!currentUser) return;
 
-    // Listen for custom event to clear badge instantly when viewed
-    const handleRead = () => setNotificationCount(0);
+    const handleRead = () => setReadTick(prev => prev + 1);
     window.addEventListener('notificationsRead', handleRead);
 
     const membersRef = collection(db, 'gyms', currentUser.uid, 'members');
@@ -38,6 +39,8 @@ export default function Layout() {
       let count = 0;
       snapshot.forEach((memberDoc) => {
         const data = memberDoc.data();
+        if (!data.expiry_date) return;
+        
         const expiryDate = new Date(data.expiry_date);
         expiryDate.setHours(0, 0, 0, 0);
 
@@ -58,7 +61,8 @@ export default function Layout() {
       unsubscribe();
       window.removeEventListener('notificationsRead', handleRead);
     };
-  }, [currentUser]);
+  }, [currentUser, readTick]);
+
 
   const navLinks = [
     { name: 'Dashboard', path: '/', icon: 'dashboard' },
@@ -84,9 +88,14 @@ export default function Layout() {
       {/* SideNavBar */}
       <aside className="hidden md:flex flex-col h-full w-72 fixed left-0 top-0 overflow-y-auto bg-zinc-950 z-50">
         <div className="flex flex-col h-full gap-2 py-8">
-          <div className="px-8 mb-10">
-            <div className="font-['Lexend'] font-black text-orange-500 text-xl tracking-widest">GYMFLOW</div>
-            <div className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] mt-1 font-medium">Precision Management</div>
+          <div className="px-8 mb-8">
+            <Link to="/" className="flex items-center gap-3">
+              <img src="/logo.png" alt="GymFlow Logo" className="h-14 w-auto drop-shadow-[0_0_8px_rgba(253,139,0,0.4)]" />
+              <div className="flex flex-col">
+                <span className="font-['Lexend'] font-black text-orange-500 text-xl tracking-widest leading-none">GYMFLOW</span>
+                <span className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] mt-1 font-medium leading-none">Precision Management</span>
+              </div>
+            </Link>
           </div>
           <nav className="flex-1 flex flex-col gap-1">
             {navLinks.map((link) => (
@@ -117,9 +126,12 @@ export default function Layout() {
 
       {/* TopNavBar */}
       <header className="fixed top-0 right-0 left-0 md:left-72 z-40 bg-zinc-950/70 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] pt-safe-top">
-        <div className="flex justify-between items-center w-full gap-3 px-3 py-3 sm:px-4 md:px-6 md:py-4">
+        <div className="flex justify-between items-center w-full gap-3 px-3 py-2 sm:px-4 md:px-6">
           <div className="flex items-center gap-3 min-w-0">
-            <span className="md:hidden font-['Lexend'] text-xl sm:text-2xl font-black italic tracking-tighter text-orange-500 truncate">GYMFLOW</span>
+            <Link to="/" className="md:hidden flex items-center gap-2">
+              <img src="/logo.png" alt="GymFlow Logo" className="h-7 w-auto" />
+              <span className="font-['Lexend'] text-lg font-black italic tracking-tighter text-orange-500 truncate">GYMFLOW</span>
+            </Link>
             <div className="relative hidden md:block">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">search</span>
               <input
@@ -163,25 +175,28 @@ export default function Layout() {
       </header>
 
       {/* Main Content Canvas */}
-      <main className="md:ml-72 pt-20 md:pt-24 pb-28 md:pb-20 px-3 sm:px-4 md:px-6 lg:px-10 min-h-screen">
+      <main className="md:ml-72 pt-20 pb-28 md:pb-20 px-3 sm:px-4 md:px-6 lg:px-10 min-h-screen">
         <Outlet context={{ memberSearch, setMemberSearch }} />
       </main>
 
       {/* Bottom Navigation for Mobile */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 glass-nav z-50 grid grid-cols-5 items-center px-1 border-t border-zinc-800/50 pt-3 pb-safe-bottom min-h-[72px]">
-        {navLinks.map((link) => (
-          <Link
-            key={link.name}
-            to={link.path}
-            className={clsx(
-              "flex min-w-0 flex-col items-center gap-1 px-1 text-center",
-              location.pathname === link.path ? "text-orange-500" : "text-zinc-500"
-            )}
-          >
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: location.pathname === link.path ? "'FILL' 1" : undefined }}>{link.icon}</span>
-            <span className="text-[9px] font-bold uppercase tracking-tight leading-none">{link.name}</span>
-          </Link>
-        ))}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 glass-nav z-50 grid grid-cols-5 items-stretch px-1 border-t border-zinc-800/50 pb-safe-bottom h-[68px]">
+        {navLinks.map((link) => {
+          const isActive = location.pathname === link.path;
+          return (
+            <Link
+              key={link.name}
+              to={link.path}
+              className={clsx(
+                "flex flex-col items-center justify-center gap-1 min-w-0 transition-all",
+                isActive ? "text-orange-500 scale-105" : "text-zinc-500"
+              )}
+            >
+              <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: isActive ? "'FILL' 1" : undefined }}>{link.icon}</span>
+              <span className="text-[9px] font-black uppercase tracking-widest leading-none">{link.name}</span>
+            </Link>
+          );
+        })}
       </nav>
     </div>
   );

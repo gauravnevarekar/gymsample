@@ -7,7 +7,7 @@
  * @param {number} quality - JPEG compression quality (0.0 to 1.0)
  * @returns {Promise<File>} The compressed image file
  */
-export async function compressImage(file, maxWidth = 400, maxHeight = 400, quality = 0.8) {
+export async function compressImage(file, maxWidth = 256, maxHeight = 256, quality = 0.6) {
   return new Promise((resolve, reject) => {
     if (!file || !file.type.match(/image.*/)) {
       reject(new Error("File must be an image"));
@@ -97,7 +97,7 @@ export function getCropLayout(
   const normalizedOffsetX = Math.max(Math.min(Number(offsetX || 0), 100), -100) / 100;
   const normalizedOffsetY = Math.max(Math.min(Number(offsetY || 0), 100), -100) / 100;
 
-  const baseScale = Math.min(safeFrame / safeWidth, safeFrame / safeHeight);
+  const baseScale = Math.max(safeFrame / safeWidth, safeFrame / safeHeight);
   const width = safeWidth * baseScale * safeZoom;
   const height = safeHeight * baseScale * safeZoom;
   const centeredLeft = (safeFrame - width) / 2;

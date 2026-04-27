@@ -25,7 +25,7 @@ function getMembershipStatus(member) {
 
   const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 3600 * 24));
   if (daysLeft < 0) return 'Expired';
-  if (daysLeft <= 7) return 'Expiring';
+  if (daysLeft <= 3) return 'Expiring';
   return 'Active';
 }
 
@@ -190,7 +190,7 @@ export default function Settings() {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
       <div className="mb-8 md:mb-10">
-        <h1 className="text-3xl md:text-4xl font-black headline-font italic uppercase tracking-tighter text-on-surface">Settings</h1>
+        <h1 className="text-3xl md:text-4xl font-black headline-font italic uppercase tracking-tighter text-white">Settings</h1>
         <p className="text-zinc-500 font-medium mt-1">Manage your gym profile and account access</p>
       </div>
 
@@ -242,7 +242,7 @@ export default function Settings() {
                     <button
                       type="button"
                       onClick={() => setIsExportModalOpen(true)}
-                      className="w-full sm:w-auto rounded-xl border border-white/10 bg-surface-container-highest px-6 py-3 text-sm font-black uppercase tracking-widest text-white transition-colors hover:bg-white/10"
+                      className="w-full sm:w-auto rounded-xl border border-white/10 bg-zinc-900 px-6 py-3 text-sm font-black uppercase tracking-widest text-white transition-colors hover:bg-white/10"
                     >
                       Export Data
                     </button>

@@ -14,10 +14,24 @@ const firebaseConfig = {
   appId: "1:253347451905:web:cca6ab8638add063c9dc00"
 };
 
+import { getFunctions } from "firebase/functions";
+import { enableIndexedDbPersistence } from "firebase/firestore";
+
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Enable offline caching to significantly reduce read costs
+enableIndexedDbPersistence(db).catch((err) => {
+  if (err.code == 'failed-precondition') {
+    console.warn("Multiple tabs open, persistence can only be enabled in one tab at a a time.");
+  } else if (err.code == 'unimplemented') {
+    console.warn("The current browser does not support all of the features required to enable persistence");
+  }
+});
+
 export const storage = getStorage(app);
+export const functions = getFunctions(app);
 
 // Use isSupported to prevent crash on unsupported browsers (like incognito or older iOS)
 export const messagingPromise = isSupported().then((supported) => {

@@ -37,8 +37,13 @@ export default function AdminLayout() {
       {/* Sidebar */}
       <aside className="hidden md:flex w-64 border-r border-zinc-800 flex-col h-screen sticky top-0 bg-zinc-950">
         <div className="p-6">
-          <div className="text-orange-500 font-black tracking-widest text-xl">SUPER ADMIN</div>
-          <div className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">Platform Control</div>
+          <Link to="/admin" className="flex items-center gap-3">
+            <img src="/logo.png" alt="GymFlow Logo" className="h-12 w-auto" />
+            <div>
+              <div className="text-orange-500 font-black tracking-widest text-xl leading-none">ADMIN</div>
+              <div className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1 leading-none">Platform Control</div>
+            </div>
+          </Link>
         </div>
         
         <nav className="flex-1 flex flex-col gap-1 px-4 mt-6">
@@ -87,9 +92,12 @@ export default function AdminLayout() {
           />
           <aside className="relative z-10 flex h-full w-[85vw] max-w-xs flex-col border-r border-zinc-800 bg-zinc-950 shadow-2xl">
             <div className="flex items-center justify-between border-b border-zinc-800 p-5">
-              <div>
-                <div className="text-orange-500 font-black tracking-widest text-lg">SUPER ADMIN</div>
-                <div className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">Platform Control</div>
+              <div className="flex items-center gap-3">
+                <img src="/logo.png" alt="GymFlow Logo" className="h-10 w-auto" />
+                <div>
+                  <div className="text-orange-500 font-black tracking-widest text-lg leading-none">ADMIN</div>
+                  <div className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1 leading-none">Platform Control</div>
+                </div>
               </div>
               <button onClick={closeMobileNav} className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-900 hover:text-white">
                 <span className="material-symbols-outlined">close</span>

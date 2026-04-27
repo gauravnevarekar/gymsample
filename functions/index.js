@@ -169,37 +169,62 @@ exports.deleteGym = onCall(async (request) => {
 exports.dailyExpiryNotifier = onSchedule({ schedule: "0 9 * * *", timeZone: "Asia/Kolkata" }, async (event) => {
   try {
     const gymsSnapshot = await admin.firestore().collection('gyms').get();
-    
-    // YYYY-MM-DD
-    const todayStr = new Date().toISOString().split('T')[0];
+    const today = new Date();
+    today.setHours(0,0,0,0);
 
-    // Iterate through all gyms
     for (const gymDoc of gymsSnapshot.docs) {
       const gymData = gymDoc.data();
       const gymId = gymDoc.id;
-      
-      // If the gym doesn't have an FCM token registered, skip
       if (!gymData.fcmToken) continue;
       
       const membersRef = admin.firestore().collection('gyms').doc(gymId).collection('members');
       
-      // Query members where expiry_date matches today exactly
-      const expiredMembersSnap = await membersRef.where('expiry_date', '==', todayStr).get();
+      const futureDate = new Date(today);
+      futureDate.setDate(today.getDate() + 3);
+
+      const membersSnap = await membersRef
+        .where('expiry_date', '>=', today.toISOString().split('T')[0])
+        .where('expiry_date', '<=', futureDate.toISOString().split('T')[0])
+        .get();
       
-      const count = expiredMembersSnap.size;
-      
-      if (count > 0) {
-        const title = 'Membership Expiry Alert';
-        const body = `${count} ${count === 1 ? 'member' : 'members'} expired today`;
+      let expiring3 = 0, expiring2 = 0, expiring1 = 0, expiredToday = 0;
+
+      membersSnap.forEach(doc => {
+        const data = doc.data();
+        if (!data.expiry_date) return;
         
+        const expiryDate = new Date(data.expiry_date);
+        expiryDate.setHours(0,0,0,0);
+        
+        const diffTime = expiryDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) expiredToday++;
+        else if (diffDays === 1) expiring1++;
+        else if (diffDays === 2) expiring2++;
+        else if (diffDays === 3) expiring3++;
+      });
+
+      if (expiredToday > 0 || expiring1 > 0 || expiring2 > 0 || expiring3 > 0) {
+        let bodyParts = [];
+        if (expiredToday > 0) bodyParts.push(`${expiredToday} expired today`);
+        if (expiring1 > 0) bodyParts.push(`${expiring1} expiring tomorrow`);
+        if (expiring2 > 0) bodyParts.push(`${expiring2} expiring in 2 days`);
+        if (expiring3 > 0) bodyParts.push(`${expiring3} expiring in 3 days`);
+
         const message = {
-          notification: { title, body },
-          token: gymData.fcmToken
+          notification: { 
+            title: 'Membership Alert', 
+            body: bodyParts.join(', ')
+          },
+          token: gymData.fcmToken,
+          data: {
+            click_action: '/notifications'
+          }
         };
         
         try {
           await admin.messaging().send(message);
-          console.log(`Successfully sent expiry notification to gym ${gymId} for ${count} members.`);
         } catch (msgErr) {
           console.error(`Failed to send FCM to gym ${gymId}:`, msgErr);
         }

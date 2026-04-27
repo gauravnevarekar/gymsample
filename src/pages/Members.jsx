@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db, storage } from '../lib/firebase';
 import { buildMembershipFinancials, formatCurrency, formatDisplayDate } from '../lib/formatters';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { motion, AnimatePresence } from 'framer-motion';
 import Avatar from '../components/Avatar';
@@ -72,7 +72,7 @@ function getMembershipStatus(member) {
   if (daysLeft < 0) {
     return { key: 'expired', label: 'Expired', color: 'text-error border-error/30 bg-error/10' };
   }
-  if (daysLeft <= 7) {
+  if (daysLeft <= 3) {
     return { key: 'expiring', label: 'Expiring', color: 'text-primary border-primary/30 bg-primary/10' };
   }
   return { key: 'active', label: 'Active', color: 'text-emerald-500 border-emerald-500/30 bg-emerald-500/10' };
@@ -143,12 +143,11 @@ export default function Members() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
 
-  useEffect(() => {
+  const fetchMembers = async () => {
     if (!currentUser) return;
-    const membersRef = collection(db, 'gyms', currentUser.uid, 'members');
-    const paymentsRef = collection(db, 'gyms', currentUser.uid, 'payments');
-
-    const unsubscribeMembers = onSnapshot(membersRef, (snapshot) => {
+    try {
+      const membersRef = collection(db, 'gyms', currentUser.uid, 'members');
+      const snapshot = await getDocs(membersRef);
       const list = [];
       snapshot.forEach((memberDoc) => {
         const data = memberDoc.data();
@@ -167,21 +166,32 @@ export default function Members() {
       });
       list.sort((a, b) => new Date(a.expiry_date) - new Date(b.expiry_date));
       setMembers(list);
-    });
+    } catch (err) {
+      console.error("Failed to fetch members:", err);
+    }
+  };
 
-    const unsubscribePayments = onSnapshot(paymentsRef, (snapshot) => {
+  const fetchPayments = async () => {
+    if (!currentUser) return;
+    try {
+      const paymentsRef = collection(db, 'gyms', currentUser.uid, 'payments');
+      const snapshot = await getDocs(paymentsRef);
       const list = [];
       snapshot.forEach((paymentDoc) => {
         list.push({ id: paymentDoc.id, ...paymentDoc.data() });
       });
       list.sort((a, b) => new Date(b.date) - new Date(a.date));
       setPayments(list);
-    });
+    } catch (err) {
+      console.error("Failed to fetch payments:", err);
+    }
+  };
 
-    return () => {
-      unsubscribeMembers();
-      unsubscribePayments();
-    };
+  useEffect(() => {
+    if (currentUser) {
+      fetchMembers();
+      fetchPayments();
+    }
   }, [currentUser]);
 
   useEffect(() => {
@@ -372,6 +382,8 @@ export default function Members() {
       }
 
       setIsUploading(false);
+      await fetchMembers();
+      await fetchPayments();
       closeModal();
     } catch (err) {
       console.error(err);
@@ -505,6 +517,8 @@ export default function Members() {
       } catch (err) {
         console.error('Failed to delete member:', err);
       }
+      
+      await fetchMembers();
     }
   };
 
@@ -564,6 +578,8 @@ export default function Members() {
         expiry_date: renewedExpiry.toISOString().split('T')[0]
       });
 
+      await fetchMembers();
+      await fetchPayments();
       closeRenewModal();
     } catch (err) {
       console.error(err);
@@ -605,10 +621,10 @@ export default function Members() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-10 gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 md:mb-10 gap-4">
         <div>
-          <h1 className="text-3xl md:text-4xl font-black headline-font italic uppercase tracking-tighter text-on-surface">Member Directory</h1>
-          <p className="text-sm md:text-base text-zinc-500 font-medium mt-1">Manage operations and members</p>
+          <h1 className="text-2xl md:text-4xl font-black headline-font italic uppercase tracking-tighter text-white leading-tight">Member Directory</h1>
+          <p className="text-xs md:text-base text-zinc-500 font-medium mt-0.5">Manage operations and members</p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
           <motion.button
@@ -625,28 +641,32 @@ export default function Members() {
 
       {/* Mobile Search Bar */}
       <div className="block md:hidden mb-6 mt-2">
-        <div className="grid grid-cols-1 gap-3">
-          <div className="relative w-full">
+        <div className="flex flex-col gap-3">
+          <div className="relative">
             <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">search</span>
             <input
               value={memberSearch}
               onChange={(e) => setMemberSearch(e.target.value)}
-              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white placeholder-zinc-500"
-              placeholder="Search members..."
+              className="w-full bg-zinc-950/50 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-sm focus:ring-1 focus:ring-primary focus:outline-none transition-all text-white placeholder-zinc-500 shadow-inner"
+              placeholder="Search by name, phone, plan..."
               type="text"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:ring-1 focus:ring-primary focus:outline-none transition-all"
-          >
-            <option value="all">All Statuses</option>
-            <option value="expired">Expired</option>
-            <option value="expiring">Expiring</option>
-            <option value="active">Active</option>
-            <option value="partial">Partial</option>
-          </select>
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">filter_list</span>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full bg-zinc-950/50 border border-white/10 rounded-xl pl-11 pr-4 py-3 text-sm text-white focus:ring-1 focus:ring-primary focus:outline-none transition-all appearance-none shadow-inner"
+            >
+              <option value="all">All Statuses</option>
+              <option value="expired">Expired</option>
+              <option value="expiring">Expiring</option>
+              <option value="active">Active</option>
+              <option value="partial">Partial</option>
+            </select>
+            <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm pointer-events-none">expand_more</span>
+          </div>
         </div>
       </div>
 
@@ -744,7 +764,7 @@ export default function Members() {
       </div>
 
       {/* Mobile Card View */}
-      <div className="md:hidden space-y-4">
+      <div className="md:hidden space-y-3">
         {members.length === 0 ? (
           <div className="py-12 text-center text-sm font-medium text-zinc-500">No members registered yet.</div>
         ) : filteredMembers.length === 0 ? (
@@ -759,39 +779,56 @@ export default function Members() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   key={m.id}
-                  className="bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 p-5 shadow-lg flex flex-col gap-4"
+                  className="bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 p-4 shadow-lg flex flex-col gap-3.5"
                 >
                   <div className="flex justify-between items-start">
-                    <div className="flex gap-3 items-center">
-                      <Avatar photoURL={m.photoURL} name={m.name} size="lg" />
-                      <div>
-                        <h3 className="text-lg font-black text-white">{m.name}</h3>
-                        <div className="flex items-start gap-2 mt-1">
-                          <p className="text-[11px] text-zinc-400 font-medium break-words">{m.phone} | {[m.gender, m.age ? `${m.age} yrs` : ''].filter(Boolean).join(', ')}</p>
+                    <div className="flex gap-3 items-center min-w-0">
+                      <Avatar photoURL={m.photoURL} name={m.name} size="lg" className="shrink-0" />
+                      <div className="min-w-0">
+                        <h3 className="text-[17px] font-black text-white truncate">{m.name}</h3>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-[11px] text-zinc-400 font-bold truncate">{m.phone}</p>
                           <WhatsAppIcon member={m} />
                         </div>
                       </div>
                     </div>
-                    <span className={`px-2 py-1 rounded border text-[9px] font-black uppercase tracking-wider ${status.color}`}>{status.label}</span>
+                    <span className={`px-2 py-0.5 rounded border text-[9px] font-black uppercase tracking-wider shrink-0 ${status.color}`}>{status.label}</span>
                   </div>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-black/20 p-3 rounded-xl border border-white/5">
-                    <div>
-                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-none mb-1.5">Plan</p>
-                      <p className="text-sm font-bold text-zinc-200">{m.planType || m.plan}</p>
-                      <p className="text-xs font-medium text-zinc-500 mt-1">Due {formatCurrency(m.balanceDue)}</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-4 bg-zinc-950/40 p-4 rounded-xl border border-white/5 shadow-inner">
+                    <div className="min-w-0 border-r border-white/5 pr-2">
+                      <p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest leading-none mb-2">Plan Details</p>
+                      <p className="text-[11px] font-black text-zinc-100 truncate">{m.planType || m.plan}</p>
+                      <div className="mt-1.5 space-y-1">
+                        <p className="text-[10px] font-medium text-zinc-400 flex justify-between"><span>Fee:</span> <span className="text-zinc-200">{formatCurrency(m.planPrice)}</span></p>
+                        <p className="text-[10px] font-medium text-zinc-400 flex justify-between"><span>Paid:</span> <span className="text-zinc-200">{formatCurrency(m.amountPaid)}</span></p>
+                        <p className="text-[10px] font-bold text-primary flex justify-between border-t border-white/5 pt-1 mt-1"><span>Due:</span> <span>{formatCurrency(m.balanceDue)}</span></p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest leading-none mb-1.5">Expiry</p>
-                      <p className="text-sm font-bold text-zinc-200">{formatDisplayDate(m.expiry_date)}</p>
+                    <div className="min-w-0">
+                      <p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest leading-none mb-2">Timeline & Profile</p>
+                      <p className="text-[11px] font-black text-zinc-100 truncate">Exp: {formatDisplayDate(m.expiry_date)}</p>
+                      <div className="mt-1.5 space-y-1">
+                        <p className="text-[10px] font-medium text-zinc-400 flex justify-between"><span>Joined:</span> <span className="text-zinc-200">{formatDisplayDate(m.join_date)}</span></p>
+                        <p className="text-[10px] font-medium text-zinc-400 flex justify-between"><span>Gender:</span> <span className="text-zinc-200">{m.gender || '-'}</span></p>
+                        <p className="text-[10px] font-medium text-zinc-400 flex justify-between"><span>Age:</span> <span className="text-zinc-200">{m.age ? `${m.age}y` : '-'}</span></p>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex gap-2 justify-end mt-1">
-                    <button onClick={() => handleDelete(m.id)} className="p-3 bg-error/5 text-error/70 hover:text-error hover:bg-error/10 rounded-xl transition-colors flex-1 flex items-center justify-center border border-error/10"><span className="material-symbols-outlined text-[18px]">delete</span></button>
-                    <button onClick={() => openEdit(m)} className="p-3 bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors flex-1 flex items-center justify-center border border-white/10"><span className="material-symbols-outlined text-[18px]">edit</span></button>
-                    <button onClick={() => openHistoryModal(m)} className="p-3 bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors flex-1 flex items-center justify-center border border-white/10"><span className="material-symbols-outlined text-[18px]">receipt_long</span></button>
-                    <button onClick={() => openRenewModal(m)} className="py-3 px-4 text-primary hover:text-zinc-950 hover:bg-primary bg-primary/10 rounded-xl transition-colors flex-[2] flex items-center justify-center gap-2 font-black text-sm uppercase tracking-wider border border-primary/20"><span className="material-symbols-outlined text-[18px]">autorenew</span> Renew</button>
+                  <div className="grid grid-cols-4 gap-2 mt-1">
+                    <button onClick={() => handleDelete(m.id)} className="p-3 bg-error/10 text-error hover:bg-error hover:text-white rounded-xl transition-all border border-error/20 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-[20px]">delete</span>
+                    </button>
+                    <button onClick={() => openEdit(m)} className="p-3 bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-all border border-white/10 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-[20px]">edit</span>
+                    </button>
+                    <button onClick={() => openHistoryModal(m)} className="p-3 bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-all border border-white/10 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-[20px]">receipt_long</span>
+                    </button>
+                    <button onClick={() => openRenewModal(m)} className="py-3 px-2 text-primary hover:text-zinc-950 hover:bg-primary bg-primary/10 rounded-xl transition-all border border-primary/20 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1">
+                      <span className="material-symbols-outlined text-[18px]">autorenew</span> Renew
+                    </button>
                   </div>
                 </motion.div>
               );
@@ -806,7 +843,7 @@ export default function Members() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 overflow-y-auto p-4 py-6"
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[60] overflow-y-auto p-4 py-6"
           >
             <motion.div
               initial={{ scale: 0.95, y: 20 }}
@@ -870,15 +907,6 @@ export default function Members() {
                       >
                         View Image
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          openCropper(photoPreview);
-                        }}
-                        className="rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-primary transition-colors hover:bg-primary/20"
-                      >
-                        Crop Image
-                      </button>
                     </div>
                   )}
                 </div>
@@ -890,7 +918,17 @@ export default function Members() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Phone Number</label>
-                    <input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all" />
+                    <input
+                      type="tel"
+                      maxLength="10"
+                      value={formData.phone}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setFormData({ ...formData, phone: val });
+                      }}
+                      className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all"
+                      placeholder="10-digit number"
+                    />
                     <p className="text-xs text-zinc-500 mt-1">Used for future login and WhatsApp reminders.</p>
                   </div>
                   <div>
@@ -951,7 +989,7 @@ export default function Members() {
 
                 {formError && <div className="rounded-lg border border-error/20 bg-error/10 px-4 py-3 text-sm text-error">{formError}</div>}
 
-                <div className="pt-4 pb-2">
+                <div className="pt-4 pb-20">
                   <button type="submit" disabled={isUploading} className="w-full flex items-center justify-center gap-2 py-4 bg-primary text-zinc-950 font-black uppercase tracking-widest text-sm rounded-xl hover:bg-primary-dim shadow-[0_0_20px_rgba(253,139,0,0.2)] transition-all disabled:opacity-70 disabled:cursor-not-allowed">
                     {isUploading && <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>}
                     {isUploading ? 'Saving...' : editingId ? 'Save Changes' : 'Confirm Member'}
@@ -969,7 +1007,7 @@ export default function Members() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 overflow-y-auto p-4 py-6"
+            className="fixed inset-0 bg-black/85 backdrop-blur-md z-[60] overflow-y-auto p-4 py-6"
           >
             <motion.div
               initial={{ scale: 0.95, y: 20 }}
@@ -988,11 +1026,12 @@ export default function Members() {
               </div>
 
               <div className="mt-6 flex justify-center">
-                <div className="relative h-72 w-72 overflow-hidden rounded-3xl border border-white/10 bg-zinc-950">
+                <div className="relative h-72 w-72 overflow-hidden rounded-3xl border-2 border-primary bg-zinc-950 shadow-2xl">
+                  {/* Image container with mask */}
                   <img
                     src={pendingPhotoSource}
                     alt="Crop preview"
-                    className="absolute select-none"
+                    className="absolute select-none transition-all duration-75"
                     style={{
                       width: `${cropPreviewLayout.width}px`,
                       height: `${cropPreviewLayout.height}px`,
@@ -1000,22 +1039,29 @@ export default function Members() {
                       top: `${cropPreviewLayout.top}px`
                     }}
                   />
-                  <div className="pointer-events-none absolute inset-0 border-[3px] border-primary/60" />
+                  {/* Visual Crop Frame Overlay */}
+                  <div className="pointer-events-none absolute inset-0 ring-[60px] ring-black/40 rounded-3xl" />
+                  <div className="pointer-events-none absolute inset-0 border-2 border-white/20 rounded-3xl shadow-[inset_0_0_40px_rgba(0,0,0,0.5)]" />
                 </div>
               </div>
 
-              <div className="mt-6 space-y-4">
+              <div className="mt-8 space-y-5">
                 <div>
-                  <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-zinc-400">Zoom</label>
-                  <input type="range" min="1" max="3" step="0.05" value={cropZoom} onChange={(e) => setCropZoom(Number(e.target.value))} className="w-full accent-primary" />
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Zoom</label>
+                    <span className="text-[10px] font-bold text-primary">{Math.round(cropZoom * 100)}%</span>
+                  </div>
+                  <input type="range" min="1" max="5" step="0.05" value={cropZoom} onChange={(e) => setCropZoom(Number(e.target.value))} className="w-full accent-primary h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer" />
                 </div>
-                <div>
-                  <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-zinc-400">Left / Right</label>
-                  <input type="range" min="-100" max="100" step="1" value={cropOffsetX} onChange={(e) => setCropOffsetX(Number(e.target.value))} className="w-full accent-primary" />
-                </div>
-                <div>
-                  <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-zinc-400">Up / Down</label>
-                  <input type="range" min="-100" max="100" step="1" value={cropOffsetY} onChange={(e) => setCropOffsetY(Number(e.target.value))} className="w-full accent-primary" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-zinc-400">Left / Right</label>
+                    <input type="range" min="-100" max="100" step="1" value={cropOffsetX} onChange={(e) => setCropOffsetX(Number(e.target.value))} className="w-full accent-primary h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer" />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-zinc-400">Up / Down</label>
+                    <input type="range" min="-100" max="100" step="1" value={cropOffsetY} onChange={(e) => setCropOffsetY(Number(e.target.value))} className="w-full accent-primary h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer" />
+                  </div>
                 </div>
               </div>
 
@@ -1038,7 +1084,7 @@ export default function Members() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] flex items-center justify-center p-4"
             onClick={() => setShowPhotoViewer(false)}
           >
             <motion.div
@@ -1098,7 +1144,7 @@ export default function Members() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[60] flex items-center justify-center p-4"
           >
             <motion.div
               initial={{ scale: 0.95, y: 20 }}
@@ -1162,7 +1208,7 @@ export default function Members() {
                   <p className="mt-2 text-xs text-primary/80">Balance after renewal: {formatCurrency(buildMembershipFinancials(renewalData.planPrice, renewalData.amount).balanceDue)}</p>
                 </div>
                 {renewError && <div className="rounded-lg border border-error/20 bg-error/10 px-4 py-3 text-sm text-error">{renewError}</div>}
-                <div className="pt-2">
+                <div className="pt-2 pb-20">
                   <button type="submit" className="w-full py-4 bg-primary text-zinc-950 font-black uppercase tracking-widest text-sm rounded-xl hover:bg-primary-dim shadow-[0_0_20px_rgba(253,139,0,0.2)] transition-all">
                     Confirm Renewal
                   </button>
@@ -1179,7 +1225,7 @@ export default function Members() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 overflow-y-auto p-4 py-6"
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[60] overflow-y-auto p-4 py-6"
           >
             <motion.div
               initial={{ scale: 0.95, y: 20 }}

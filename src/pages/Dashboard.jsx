@@ -1,26 +1,41 @@
 import React, { useState, useEffect, useMemo, Component } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { motion, AnimatePresence } from 'framer-motion';
-import { isToday, isThisWeek, isThisMonth, parseISO, format, subMonths } from 'date-fns';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
+import { collection, doc, getDocs, query, where, orderBy, limit, getCountFromServer, getAggregateFromServer, sum } from 'firebase/firestore';
+import { format, subMonths, subDays, parseISO, isToday, isAfter, isThisMonth } from 'date-fns';
+import { motion } from 'framer-motion';
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, 
+  ResponsiveContainer, BarChart, Bar, Legend 
+} from 'recharts';
 
 class ChartErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false };
   }
   static getDerivedStateFromError(error) {
-    return { hasError: true, error };
+    return { hasError: true };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("Chart Error:", error, errorInfo);
   }
   render() {
     if (this.state.hasError) {
-      return <div className="text-red-500 font-bold p-4 bg-red-500/10 rounded-xl whitespace-pre-wrap">Chart failed to load: {this.state.error?.message}</div>;
+      return (
+        <div className="flex items-center justify-center h-full text-zinc-500 italic text-[10px]">
+          Chart failed to load. Try refreshing.
+        </div>
+      );
     }
     return this.props.children;
   }
 }
+
+const cardVariant = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
+};
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
@@ -30,131 +45,154 @@ export default function Dashboard() {
     incomeWeekly: 0,
     incomeMonthly: 0,
     incomeAll: 0,
-    
     expenseMonthly: 0,
     expenseAll: 0,
-
     netProfitMonthly: 0,
     netProfitAll: 0,
-
     totalMembers: 0,
     activeMembers: 0,
     expiredMembers: 0
   });
-
+ 
   const [pendingMembers, setPendingMembers] = useState([]);
   const [transactions, setTransactions] = useState([]);
-
+ 
   const [allPayments, setAllPayments] = useState([]);
   const [allExpenses, setAllExpenses] = useState([]);
-  const [allMembers, setAllMembers] = useState([]);
-
+  const [allMembers, setAllMembers] = useState([]); // This will now just be recent members for the chart
+ 
   useEffect(() => {
     if (!currentUser) return;
 
-    // Listen to members
-    const membersRef = collection(db, 'gyms', currentUser.uid, 'members');
-    const unsubscribeMembers = onSnapshot(membersRef, (snapshot) => {
-      let total = 0, active = 0, expired = 0;
-      const pendings = [];
+    let isMounted = true;
+
+    async function fetchDashboardData() {
       const now = new Date();
       now.setHours(0,0,0,0);
       
-      snapshot.forEach(doc => {
-        total++;
-        const data = doc.data();
-        const expiryDate = new Date(data.expiry_date);
-        expiryDate.setHours(0,0,0,0);
-        
-        const diffTime = expiryDate.getTime() - now.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const sixMonthsAgo = subMonths(now, 5);
+      sixMonthsAgo.setDate(1); // start of 6 months ago
 
-        if (diffDays >= 0) {
-          active++;
-          if (diffDays <= 3) {
+      const membersRef = collection(db, 'gyms', currentUser.uid, 'members');
+      const txRef = collection(db, 'gyms', currentUser.uid, 'payments');
+      const expRef = collection(db, 'gyms', currentUser.uid, 'expenses');
+
+      try {
+        // 1. Aggregation Queries (1 read each)
+        const [totalMemSnap, activeMemSnap, incomeAllSnap, expenseAllSnap] = await Promise.all([
+          getCountFromServer(membersRef),
+          getCountFromServer(query(membersRef, where('expiry_date', '>=', now.toISOString()))),
+          getAggregateFromServer(txRef, { total: sum('amount') }),
+          getAggregateFromServer(expRef, { total: sum('amount') })
+        ]);
+
+        const totalMembers = totalMemSnap.data().count;
+        const activeMembers = activeMemSnap.data().count;
+        const expiredMembers = totalMembers - activeMembers;
+        const incomeAll = incomeAllSnap.data().total || 0;
+        const expenseAll = expenseAllSnap.data().total || 0;
+
+        // 2. Fetch Data for Charts (Last 6 months only)
+        const [txSnap, expSnap, recentMembersSnap] = await Promise.all([
+          getDocs(query(txRef, where('date', '>=', sixMonthsAgo.toISOString()))),
+          getDocs(query(expRef, where('date', '>=', sixMonthsAgo.toISOString()))),
+          getDocs(query(membersRef, where('join_date', '>=', sixMonthsAgo.toISOString())))
+        ]);
+
+        // Process Payments & Expenses
+        let incomeT = 0, incomeW = 0, incomeM = 0;
+        let expM = 0;
+        const txs = [];
+        const exps = [];
+        const recentMems = [];
+        const sevenDaysAgo = subDays(new Date(), 7);
+
+        txSnap.forEach(doc => {
+          const data = doc.data();
+          const amount = Number(data.amount) || 0;
+          const d = parseISO(data.date);
+          
+          if (isToday(d)) incomeT += amount;
+          if (isAfter(d, sevenDaysAgo)) incomeW += amount;
+          if (isThisMonth(d)) incomeM += amount;
+          
+          txs.push({ id: doc.id, ...data });
+        });
+
+        expSnap.forEach(doc => {
+          const data = doc.data();
+          const amount = Number(data.amount) || 0;
+          const d = parseISO(data.date);
+          
+          if (isThisMonth(d)) expM += amount;
+          exps.push({ id: doc.id, ...data });
+        });
+
+        recentMembersSnap.forEach(doc => {
+          recentMems.push({ id: doc.id, ...doc.data() });
+        });
+
+        // 3. Recent Transactions (Top 5)
+        // Since we already fetched the last 6 months, we can just sort txs in memory instead of another query
+        txs.sort((a,b) => new Date(b.date) - new Date(a.date));
+        const recentTxs = txs.slice(0, 5);
+
+        // 4. Pending Members (Expiring soon or recently expired)
+        const expiredDaysAgo = subDays(now, 30);
+        const expiringInDays = new Date(now);
+        expiringInDays.setDate(expiringInDays.getDate() + 3);
+        
+        const pendingSnap = await getDocs(query(membersRef, 
+          where('expiry_date', '>=', expiredDaysAgo.toISOString()),
+          where('expiry_date', '<=', expiringInDays.toISOString())
+        ));
+
+        const pendings = [];
+        pendingSnap.forEach(doc => {
+          const data = doc.data();
+          const expiryDate = new Date(data.expiry_date);
+          expiryDate.setHours(0,0,0,0);
+          
+          const diffTime = expiryDate.getTime() - now.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          if (diffDays >= 0) {
             pendings.push({ id: doc.id, ...data, pendingStatus: 'Expiring Soon', diffDays });
+          } else {
+            pendings.push({ id: doc.id, ...data, pendingStatus: 'Expired', diffDays });
           }
-        } else {
-          expired++;
-          pendings.push({ id: doc.id, ...data, pendingStatus: 'Expired', diffDays });
+        });
+        pendings.sort((a,b) => new Date(a.expiry_date) - new Date(b.expiry_date));
+
+        if (isMounted) {
+          setAllPayments(txs);
+          setAllExpenses(exps);
+          setAllMembers(recentMems);
+          setTransactions(recentTxs);
+          setPendingMembers(pendings);
+          setStats({
+            incomeToday: incomeT,
+            incomeWeekly: incomeW,
+            incomeMonthly: incomeM,
+            incomeAll,
+            expenseMonthly: expM,
+            expenseAll,
+            netProfitMonthly: incomeM - expM,
+            netProfitAll: incomeAll - expenseAll,
+            totalMembers,
+            activeMembers,
+            expiredMembers
+          });
         }
-      });
-      // Sort pendings by how far overdue or closest to expiry
-      pendings.sort((a,b) => new Date(a.expiry_date) - new Date(b.expiry_date));
-      
-      const membersData = [];
-      snapshot.forEach(doc => membersData.push({ id: doc.id, ...doc.data() }));
-      setAllMembers(membersData);
+      } catch (err) {
+        console.error("Failed to load dashboard data:", err);
+      }
+    }
 
-      setPendingMembers(pendings);
-      setStats(s => ({ ...s, totalMembers: total, activeMembers: active, expiredMembers: expired }));
-    });
-
-    // Listen to payments (Income)
-    const txRef = collection(db, 'gyms', currentUser.uid, 'payments');
-    const unsubscribeTx = onSnapshot(txRef, (snapshot) => {
-      let incomeT = 0, incomeW = 0, incomeM = 0, incomeA = 0;
-      let txs = [];
-      
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const amount = data.amount || 0;
-        const d = parseISO(data.date);
-        
-        incomeA += amount;
-        if (isToday(d)) incomeT += amount;
-        if (isThisWeek(d)) incomeW += amount;
-        if (isThisMonth(d)) incomeM += amount;
-        
-        txs.push({ id: doc.id, ...data });
-      });
-      
-      setAllPayments(txs);
-      txs.sort((a,b) => new Date(b.date) - new Date(a.date));
-      setTransactions(txs.slice(0, 5));
-      
-      setStats(s => ({ 
-        ...s, 
-        incomeToday: incomeT, 
-        incomeWeekly: incomeW, 
-        incomeMonthly: incomeM, 
-        incomeAll: incomeA,
-        netProfitMonthly: incomeM - s.expenseMonthly,
-        netProfitAll: incomeA - s.expenseAll
-      }));
-    });
-
-    // Listen to expenses
-    const expRef = collection(db, 'gyms', currentUser.uid, 'expenses');
-    const unsubscribeExp = onSnapshot(expRef, (snapshot) => {
-      let expM = 0, expA = 0;
-      
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        const amount = data.amount || 0;
-        const d = parseISO(data.date);
-        
-        expA += amount;
-        if (isThisMonth(d)) expM += amount;
-      });
-
-      const exps = [];
-      snapshot.forEach(doc => exps.push({ id: doc.id, ...doc.data() }));
-      setAllExpenses(exps);
-
-      setStats(s => ({ 
-        ...s, 
-        expenseMonthly: expM, 
-        expenseAll: expA,
-        netProfitMonthly: s.incomeMonthly - expM,
-        netProfitAll: s.incomeAll - expA
-      }));
-    });
+    fetchDashboardData();
 
     return () => {
-      unsubscribeMembers();
-      unsubscribeTx();
-      unsubscribeExp();
+      isMounted = false;
     };
   }, [currentUser]);
 
@@ -258,69 +296,68 @@ export default function Dashboard() {
     <motion.div initial="hidden" animate="visible" transition={{ staggerChildren: 0.1 }}>
       
       {/* Header */}
-      <motion.div variants={cardVariant} className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-10 gap-2 md:gap-4">
+      <motion.div variants={cardVariant} className="flex flex-col md:flex-row md:items-center justify-between mb-6 md:mb-10 gap-4">
         <div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black headline-font italic tracking-tighter text-on-surface uppercase drop-shadow-lg">Dashboard</h1>
-          <p className="text-sm md:text-base text-zinc-400 mt-1 font-medium tracking-wide">Live performance indicators</p>
+          <h1 className="text-2xl md:text-5xl font-black headline-font italic tracking-tighter text-on-surface uppercase drop-shadow-lg">Dashboard</h1>
+          <p className="text-xs md:text-base text-zinc-400 mt-1 font-medium tracking-wide">Live performance indicators</p>
         </div>
       </motion.div>
 
       {/* Income Row - Highlighting Times */}
-      <motion.div variants={cardVariant} className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8">
-        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-primary/20 p-4 md:p-6 rounded-2xl bg-gradient-to-br from-surface to-primary/5 hover:-translate-y-1 transition-transform">
-          <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1 flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">calendar_today</span> Today's Income</p>
+      <motion.div variants={cardVariant} className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-6 mb-6 md:mb-8">
+        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-primary/20 p-4 md:p-6 rounded-2xl bg-gradient-to-br from-surface to-primary/5">
+          <p className="text-[9px] font-black text-primary uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><span className="material-symbols-outlined text-[14px]">calendar_today</span> Today's Income</p>
           <h2 className="text-2xl md:text-4xl font-black headline-font text-white">₹{stats.incomeToday.toLocaleString()}</h2>
         </div>
-        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-white/5 p-4 md:p-6 rounded-2xl hover:-translate-y-1 transition-transform">
-          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Weekly Income</p>
-          <h2 className="text-2xl md:text-3xl font-black headline-font text-white">₹{stats.incomeWeekly.toLocaleString()}</h2>
+        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-white/5 p-4 md:p-6 rounded-2xl">
+          <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><span className="material-symbols-outlined text-[14px]">date_range</span> Weekly Income</p>
+          <h2 className="text-xl md:text-3xl font-black headline-font text-white">₹{stats.incomeWeekly.toLocaleString()}</h2>
         </div>
-        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-white/5 p-4 md:p-6 rounded-2xl hover:-translate-y-1 transition-transform">
-          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Monthly Income</p>
-          <h2 className="text-2xl md:text-3xl font-black headline-font text-white">₹{stats.incomeMonthly.toLocaleString()}</h2>
+        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-white/5 p-4 md:p-6 rounded-2xl">
+          <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><span className="material-symbols-outlined text-[14px]">payments</span> Monthly Income</p>
+          <h2 className="text-xl md:text-3xl font-black headline-font text-white">₹{stats.incomeMonthly.toLocaleString()}</h2>
         </div>
       </motion.div>
 
       {/* Major Stats Row */}
-      <motion.div variants={cardVariant} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
+      <motion.div variants={cardVariant} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-8 md:mb-10">
         
         {/* Monthly Expenses */}
-        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-error/20 p-4 md:p-6 rounded-2xl relative overflow-hidden group hover:-translate-y-1 transition-transform bg-gradient-to-br from-surface to-error/10">
-          <div className="absolute -top-4 -right-4 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-error/20 p-5 md:p-6 rounded-2xl relative overflow-hidden group bg-gradient-to-br from-surface to-error/10">
+          <div className="absolute -top-4 -right-4 p-4 opacity-5">
             <span className="material-symbols-outlined text-[100px] text-error">receipt_long</span>
           </div>
-          <p className="text-[10px] font-black text-error uppercase tracking-widest mb-1">Monthly Expenses</p>
+          <p className="text-[10px] font-black text-error uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><span className="material-symbols-outlined text-[16px]">trending_down</span> Monthly Expenses</p>
           <h2 className="text-2xl md:text-3xl font-black headline-font text-white">₹{stats.expenseMonthly.toLocaleString()}</h2>
-          <p className="text-[10px] md:text-xs text-zinc-500 mt-2 font-medium">₹{stats.expenseAll.toLocaleString()} All-Time</p>
+          <p className="text-[10px] md:text-xs text-zinc-500 mt-3 font-medium">₹{stats.expenseAll.toLocaleString()} All-Time</p>
         </div>
 
         {/* Net Profit Monthly */}
-        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-tertiary/30 p-4 md:p-6 rounded-2xl relative overflow-hidden group hover:-translate-y-1 transition-transform bg-gradient-to-br from-surface to-tertiary/10">
-          <div className="absolute -top-4 -right-4 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+        <div className="bg-surface-container-low/50 backdrop-blur-xl border border-tertiary/30 p-5 md:p-6 rounded-2xl relative overflow-hidden group bg-gradient-to-br from-surface to-tertiary/10">
+          <div className="absolute -top-4 -right-4 p-4 opacity-5">
             <span className="material-symbols-outlined text-[100px] text-tertiary">trending_up</span>
           </div>
-          <p className="text-[10px] font-black text-tertiary uppercase tracking-widest mb-1">Monthly Net Profit</p>
+          <p className="text-[10px] font-black text-tertiary uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><span className="material-symbols-outlined text-[16px]">auto_graph</span> Monthly Net Profit</p>
           <h2 className="text-2xl md:text-3xl font-black headline-font text-white">₹{stats.netProfitMonthly.toLocaleString()}</h2>
-          <p className="text-[10px] md:text-xs text-zinc-500 mt-2 font-medium">₹{stats.netProfitAll.toLocaleString()} All-Time</p>
+          <p className="text-[10px] md:text-xs text-zinc-500 mt-3 font-medium">₹{stats.netProfitAll.toLocaleString()} All-Time</p>
         </div>
 
         {/* Members Status Widget */}
-        <div className="lg:col-span-2 bg-surface-container-low/50 backdrop-blur-xl border border-white/5 p-4 md:p-6 rounded-2xl hover:-translate-y-1 transition-transform">
-          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Membership Capacity</p>
-          <div className="flex items-end gap-2 md:gap-3 mb-2">
+        <div className="lg:col-span-2 bg-surface-container-low/50 backdrop-blur-xl border border-white/5 p-5 md:p-6 rounded-2xl">
+          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"><span className="material-symbols-outlined text-[16px]">fitness_center</span> Membership Capacity</p>
+          <div className="flex items-end gap-2 md:gap-3 mb-4">
             <h2 className="text-3xl md:text-4xl font-black headline-font text-white">{stats.totalMembers.toLocaleString()}</h2>
-            <span className="text-[10px] md:text-xs font-bold text-zinc-500 mb-1.5 uppercase tracking-wider">Total</span>
+            <span className="text-[10px] md:text-xs font-bold text-zinc-500 mb-1.5 uppercase tracking-wider">Total Members</span>
           </div>
-          <div className="mt-4 h-2 w-full bg-zinc-900 rounded-full overflow-hidden flex ring-1 ring-white/5">
-            <div className="h-full bg-primary" style={{ width: stats.totalMembers ? `${(stats.activeMembers / stats.totalMembers) * 100}%` : '0%' }}></div>
-            <div className="h-full bg-error" style={{ width: stats.totalMembers ? `${(stats.expiredMembers / stats.totalMembers) * 100}%` : '0%' }}></div>
+          <div className="h-2.5 w-full bg-zinc-900 rounded-full overflow-hidden flex ring-1 ring-white/5">
+            <div className="h-full bg-primary shadow-[0_0_10px_rgba(253,139,0,0.4)]" style={{ width: stats.totalMembers ? `${(stats.activeMembers / stats.totalMembers) * 100}%` : '0%' }}></div>
+            <div className="h-full bg-error shadow-[0_0_10px_rgba(244,63,94,0.4)]" style={{ width: stats.totalMembers ? `${(stats.expiredMembers / stats.totalMembers) * 100}%` : '0%' }}></div>
           </div>
-          <div className="mt-3 flex flex-col gap-2 text-[9px] font-black uppercase tracking-tighter sm:flex-row sm:items-center sm:justify-between md:text-[11px]">
-            <div className="flex items-center gap-1.5 text-primary"><div className="w-2 h-2 rounded-full bg-primary" /> {stats.activeMembers} Active</div>
-            <div className="flex items-center gap-1.5 text-error"><div className="w-2 h-2 rounded-full bg-error" /> {stats.expiredMembers} Expired (Pending)</div>
+          <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-black uppercase tracking-tight md:text-[11px]">
+            <div className="flex items-center gap-2 text-primary"><div className="w-2 h-2 rounded-full bg-primary" /> {stats.activeMembers} Active</div>
+            <div className="flex items-center gap-2 text-error"><div className="w-2 h-2 rounded-full bg-error" /> {stats.expiredMembers} Expired / Pending</div>
           </div>
         </div>
-
       </motion.div>
 
       {/* Charts Row */}

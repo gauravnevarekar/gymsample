@@ -1,27 +1,36 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
-import { collection, onSnapshot, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Expenses() {
   const { currentUser } = useAuth();
   const [expenses, setExpenses] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState(null);
   const [newExpense, setNewExpense] = useState({ category: 'Rent', amount: '', description: '' });
 
-  useEffect(() => {
+  const fetchExpenses = async () => {
     if (!currentUser) return;
-    const expensesRef = collection(db, 'gyms', currentUser.uid, 'expenses');
-    const unsubscribe = onSnapshot(expensesRef, (snapshot) => {
+    try {
+      const expensesRef = collection(db, 'gyms', currentUser.uid, 'expenses');
+      const snapshot = await getDocs(expensesRef);
       const list = [];
       snapshot.forEach(doc => {
         list.push({ id: doc.id, ...doc.data() });
       });
       list.sort((a,b) => new Date(b.date) - new Date(a.date));
       setExpenses(list);
-    });
-    return unsubscribe;
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchExpenses();
+    }
   }, [currentUser]);
 
   const handleAddExpense = async (e) => {
@@ -35,17 +44,56 @@ export default function Expenses() {
       });
       setShowAddModal(false);
       setNewExpense({ category: 'Rent', amount: '', description: '' });
+      await fetchExpenses();
     } catch (err) {
       console.error(err);
     }
   };
 
+  const handleUpdateExpense = async (e) => {
+    e.preventDefault();
+    if (!editingExpense) return;
+    try {
+      await updateDoc(doc(db, 'gyms', currentUser.uid, 'expenses', editingExpense.id), {
+        category: newExpense.category,
+        description: newExpense.description,
+        amount: Number(newExpense.amount)
+      });
+      setShowAddModal(false);
+      setEditingExpense(null);
+      setNewExpense({ category: 'Rent', amount: '', description: '' });
+      await fetchExpenses();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteExpense = async (expense) => {
+    if (!window.confirm(`Are you sure you want to delete this expense: ${expense.description}?`)) return;
+    try {
+      await deleteDoc(doc(db, 'gyms', currentUser.uid, 'expenses', expense.id));
+      await fetchExpenses();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const startEdit = (expense) => {
+    setEditingExpense(expense);
+    setNewExpense({
+      category: expense.category,
+      amount: expense.amount,
+      description: expense.description
+    });
+    setShowAddModal(true);
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 md:mb-10 gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 md:mb-10 gap-4">
         <div>
-          <h1 className="text-3xl md:text-4xl font-black headline-font italic uppercase tracking-tighter text-white">Expenses</h1>
-          <p className="text-sm md:text-base text-zinc-500 font-medium mt-1">Track gym operational costs</p>
+          <h1 className="text-2xl md:text-4xl font-black headline-font italic uppercase tracking-tighter text-white leading-tight">Expenses</h1>
+          <p className="text-xs md:text-base text-zinc-500 font-medium mt-0.5">Track and manage your gym's operational costs</p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
           <motion.button 
@@ -68,6 +116,7 @@ export default function Expenses() {
                 <th className="py-5 px-6 text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none text-center">Category</th>
                 <th className="py-5 px-6 text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none">Description</th>
                 <th className="py-5 px-6 text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none text-right">Amount</th>
+                <th className="py-5 px-6 text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/5">
@@ -86,7 +135,17 @@ export default function Expenses() {
                         <span className="bg-error/10 border border-error/20 text-error px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-widest">{exp.category}</span>
                       </td>
                       <td className="py-4 px-6 text-xs font-medium text-zinc-300">{exp.description}</td>
-                      <td className="py-4 px-6 text-sm font-black text-error text-right">-₹{exp.amount.toFixed(2)}</td>
+                      <td className="py-4 px-6 text-sm font-black text-error text-right whitespace-nowrap">-₹{exp.amount.toFixed(2)}</td>
+                      <td className="py-4 px-6 text-right">
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => startEdit(exp)} className="p-2 text-zinc-500 hover:text-white transition-colors">
+                            <span className="material-symbols-outlined text-lg">edit</span>
+                          </button>
+                          <button onClick={() => handleDeleteExpense(exp)} className="p-2 text-zinc-500 hover:text-error transition-colors">
+                            <span className="material-symbols-outlined text-lg">delete</span>
+                          </button>
+                        </div>
+                      </td>
                     </motion.tr>
                   ))}
                 </AnimatePresence>
@@ -107,20 +166,31 @@ export default function Expenses() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 key={exp.id} 
-                className="bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 p-5 shadow-lg flex flex-col gap-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-lg font-black text-white">{exp.category}</h3>
-                    <p className="text-xs text-zinc-400 mt-0.5">{new Date(exp.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                className="bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 p-4 shadow-lg flex flex-col gap-3.5">
+                <div className="flex justify-between items-start gap-4">
+                  <div className="min-w-0">
+                    <h3 className="text-[17px] font-black text-white truncate">{exp.category}</h3>
+                    <p className="text-[11px] text-zinc-400 font-bold mt-0.5">{new Date(exp.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                   </div>
-                  <span className="text-error font-black text-lg">-₹{exp.amount.toFixed(2)}</span>
+                  <div className="shrink-0 text-right">
+                    <span className="text-error font-black text-[18px]">-₹{exp.amount.toFixed(2)}</span>
+                  </div>
                 </div>
                 
                 {exp.description && (
-                  <div className="mt-1">
-                    <p className="text-sm font-medium text-zinc-300">{exp.description}</p>
+                  <div className="bg-zinc-950/40 p-3 rounded-xl border border-white/5">
+                    <p className="text-sm font-medium text-zinc-300 leading-relaxed">{exp.description}</p>
                   </div>
                 )}
+
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <button onClick={() => startEdit(exp)} className="p-3 bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-all border border-white/10 flex items-center justify-center gap-2 font-bold text-xs uppercase">
+                    <span className="material-symbols-outlined text-[18px]">edit</span> Edit
+                  </button>
+                  <button onClick={() => handleDeleteExpense(exp)} className="p-3 bg-error/10 text-error hover:bg-error hover:text-white rounded-xl transition-all border border-error/20 flex items-center justify-center gap-2 font-bold text-xs uppercase">
+                    <span className="material-symbols-outlined text-[18px]">delete</span> Delete
+                  </button>
+                </div>
               </motion.div>
             ))}
           </AnimatePresence>
@@ -131,17 +201,21 @@ export default function Expenses() {
         {showAddModal && (
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 overflow-y-auto p-4 py-6">
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[60] overflow-y-auto p-4 py-6">
             <motion.div 
               initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
               className="bg-surface-container-highest p-5 md:p-8 rounded-2xl w-full max-w-md max-h-[calc(100vh-3rem)] overflow-y-auto border border-white/5 shadow-2xl relative">
               <div className="absolute top-0 right-0 p-3">
-                <button onClick={() => setShowAddModal(false)} className="text-zinc-500 hover:text-white p-2 flex"><span className="material-symbols-outlined">close</span></button>
+                <button onClick={() => {
+                  setShowAddModal(false);
+                  setEditingExpense(null);
+                  setNewExpense({ category: 'Rent', amount: '', description: '' });
+                }} className="text-zinc-500 hover:text-white p-2 flex"><span className="material-symbols-outlined">close</span></button>
               </div>
 
-              <h2 className="text-xl md:text-2xl font-black headline-font italic mb-6 text-white uppercase">Add Expense</h2>
+              <h2 className="text-xl md:text-2xl font-black headline-font italic mb-6 text-white uppercase">{editingExpense ? 'Edit Expense' : 'Add Expense'}</h2>
               
-              <form onSubmit={handleAddExpense} className="space-y-5">
+              <form onSubmit={editingExpense ? handleUpdateExpense : handleAddExpense} className="space-y-5">
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Expense Category</label>
                   <select required value={newExpense.category} onChange={e => setNewExpense({...newExpense, category: e.target.value})} className="w-full bg-zinc-900 border border-zinc-700 focus:border-error focus:ring-1 focus:ring-error rounded-lg px-4 py-3 text-white outline-none transition-all">
@@ -160,9 +234,9 @@ export default function Expenses() {
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Amount (₹)</label>
                   <input type="number" required value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} className="w-full bg-zinc-900 border border-zinc-700 focus:border-error focus:ring-1 focus:ring-error rounded-lg px-4 py-3 text-white outline-none transition-all" />
                 </div>
-                <div className="pt-4 pb-2">
+                <div className="pt-4 pb-20">
                   <button type="submit" className="w-full py-4 bg-error text-white font-black uppercase tracking-widest text-sm rounded-xl hover:bg-error-dim shadow-[0_0_20px_rgba(255,115,81,0.2)] transition-all flex justify-center items-center gap-2">
-                    <span className="material-symbols-outlined text-[18px]">receipt_long</span> Record Expense
+                    <span className="material-symbols-outlined text-[18px]">{editingExpense ? 'save' : 'receipt_long'}</span> {editingExpense ? 'Save Changes' : 'Record Expense'}
                   </button>
                 </div>
               </form>

@@ -28,9 +28,13 @@ export default function AdminPlans() {
   const formatDate = (date) => {
     if (!date) return '';
     try {
-      if (typeof date === 'string') return date.split('T')[0];
-      if (date.toDate) return date.toDate().toISOString().split('T')[0];
-      return new Date(date).toISOString().split('T')[0];
+      const d = date.toDate ? date.toDate() : new Date(date);
+      if (isNaN(d.getTime())) return '';
+      // Use local date parts to avoid the UTC one-day-off bug
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     } catch (e) {
       return '';
     }
@@ -65,8 +69,8 @@ export default function AdminPlans() {
   async function updateDate(id, field, dateString) {
     if(!dateString) return;
     try {
-      // Set time to midnight local to avoid timezone shifting issues when picking a date
-      const d = new Date(dateString + 'T00:00:00');
+      // Use UTC constructor (YYYY-MM-DD) to avoid timezone shift during toISOString()
+      const d = new Date(dateString);
       await updateDoc(doc(db, 'gyms', id), { [field]: d.toISOString() });
     } catch (e) {
       alert("Failed: " + e.message);

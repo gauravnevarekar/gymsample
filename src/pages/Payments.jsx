@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { buildMembershipFinancials, formatCurrency, formatDisplayDate } from '../lib/formatters';
-import { collection, onSnapshot, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function createInitialPayment() {
@@ -24,22 +24,29 @@ export default function Payments() {
   const [newPayment, setNewPayment] = useState(createInitialPayment());
   const [paymentError, setPaymentError] = useState('');
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
+  const [editingPayment, setEditingPayment] = useState(null);
 
-  useEffect(() => {
+  const fetchPayments = async () => {
     if (!currentUser) return;
-
-    const paymentsRef = collection(db, 'gyms', currentUser.uid, 'payments');
-    const unsubscribePayments = onSnapshot(paymentsRef, (snapshot) => {
+    try {
+      const paymentsRef = collection(db, 'gyms', currentUser.uid, 'payments');
+      const snapshot = await getDocs(paymentsRef);
       const list = [];
       snapshot.forEach((paymentDoc) => {
         list.push({ id: paymentDoc.id, ...paymentDoc.data() });
       });
       list.sort((a, b) => new Date(b.date) - new Date(a.date));
       setPayments(list);
-    });
+    } catch(err) {
+      console.error(err);
+    }
+  };
 
-    const membersRef = collection(db, 'gyms', currentUser.uid, 'members');
-    const unsubscribeMembers = onSnapshot(membersRef, (snapshot) => {
+  const fetchMembers = async () => {
+    if (!currentUser) return;
+    try {
+      const membersRef = collection(db, 'gyms', currentUser.uid, 'members');
+      const snapshot = await getDocs(membersRef);
       const mList = [];
       snapshot.forEach((memberDoc) => {
         const data = memberDoc.data();
@@ -61,12 +68,16 @@ export default function Payments() {
         });
       });
       setMembers(mList);
-    });
+    } catch(err) {
+      console.error(err);
+    }
+  };
 
-    return () => {
-      unsubscribePayments();
-      unsubscribeMembers();
-    };
+  useEffect(() => {
+    if (currentUser) {
+      fetchPayments();
+      fetchMembers();
+    }
   }, [currentUser]);
 
   const selectedMember = members.find((member) => member.id === newPayment.memberId);
@@ -87,15 +98,17 @@ export default function Payments() {
     setPaymentError('');
     setMemberSearchTerm('');
   };
-
   const handleAddPayment = async (e) => {
     e.preventDefault();
     try {
       const member = members.find((m) => m.id === newPayment.memberId);
-
       if (isMembershipPayment && !member) return;
       if (!isMembershipPayment && !newPayment.supplementName.trim()) return;
       setPaymentError('');
+      console.log('--- handleAddPayment ---');
+      console.log('newPayment.amount (raw):', newPayment.amount);
+      console.log('newPayment.amount (as Number):', Number(newPayment.amount));
+      console.log('member.balanceDue:', member?.balanceDue);
 
       const paymentSummary = isMembershipPayment
         ? `fee collection for ${member.name}`
@@ -106,15 +119,14 @@ export default function Payments() {
         return;
       }
 
-      if (isMembershipPayment && Number(newPayment.amount || 0) > Number(member.balanceDue || 0)) {
+      if (isMembershipPayment && Number(newPayment.amount || 0) > (Number(member.balanceDue || 0) + 0.01)) {
         setPaymentError('Amount given cannot be more than the remaining balance.');
         return;
       }
 
       const confirmed = window.confirm(
-        `Confirm ${paymentSummary} for ${formatCurrency(newPayment.amount)}? Payments are locked after saving for transparency.`
+        `Confirm ${paymentSummary} for ${formatCurrency(newPayment.amount)}?`
       );
-
       if (!confirmed) return;
 
       await addDoc(collection(db, 'gyms', currentUser.uid, 'payments'), {
@@ -126,7 +138,6 @@ export default function Payments() {
         plan_type: isMembershipPayment ? member.planType : null,
         supplement_name: isMembershipPayment ? null : newPayment.supplementName.trim(),
         quantity: isMembershipPayment ? null : Number(newPayment.quantity || 1),
-        immutable: true,
         balance_after: isMembershipPayment ? Math.max(Number(member.balanceDue || 0) - Number(newPayment.amount || 0), 0) : null,
         payment_phase: isMembershipPayment ? 'Balance Collection' : null,
         date: new Date().toISOString()
@@ -144,18 +155,114 @@ export default function Payments() {
       }
 
       resetPaymentForm();
+      await fetchPayments();
+      if (isMembershipPayment) await fetchMembers();
     } catch (err) {
       console.error(err);
       setPaymentError('Failed to save payment.');
     }
   };
 
+  const handleUpdatePayment = async (e) => {
+    e.preventDefault();
+    try {
+      const member = members.find((m) => m.id === newPayment.memberId);
+      if (isMembershipPayment && !member) return;
+      if (!isMembershipPayment && !newPayment.supplementName.trim()) return;
+      setPaymentError('');
+      console.log('--- handleUpdatePayment ---');
+      console.log('newPayment.amount (raw):', newPayment.amount);
+      console.log('editingPayment.amount:', editingPayment.amount);
+      console.log('diff:', Number(newPayment.amount) - Number(editingPayment.amount));
+
+      const diff = Number(newPayment.amount) - Number(editingPayment.amount);
+
+      if (isMembershipPayment && diff > (Number(member.balanceDue || 0) + 0.01)) {
+        setPaymentError('Amount given cannot result in a negative balance.');
+        return;
+      }
+
+      await updateDoc(doc(db, 'gyms', currentUser.uid, 'payments', editingPayment.id), {
+        memberId: member?.id || null,
+        member_name: member?.name || 'Supplement Sale',
+        amount: Number(newPayment.amount),
+        method: newPayment.method,
+        category: newPayment.category,
+        plan_type: isMembershipPayment ? member.planType : null,
+        supplement_name: isMembershipPayment ? null : newPayment.supplementName.trim(),
+        quantity: isMembershipPayment ? null : Number(newPayment.quantity || 1),
+        balance_after: isMembershipPayment ? Math.max(Number(member.balanceDue || 0) - diff, 0) : null,
+        date: editingPayment.date 
+      });
+
+      if (isMembershipPayment) {
+        const updatedPaid = Number(member.amountPaid || 0) + diff;
+        const financials = buildMembershipFinancials(member.planPrice, updatedPaid);
+
+        await updateDoc(doc(db, 'gyms', currentUser.uid, 'members', member.id), {
+          amountPaid: financials.amountPaid,
+          balanceDue: financials.balanceDue,
+          paymentStatus: financials.paymentStatus
+        });
+      }
+
+      resetPaymentForm();
+      setEditingPayment(null);
+      await fetchPayments();
+      if (isMembershipPayment) await fetchMembers();
+    } catch (err) {
+      console.error(err);
+      setPaymentError('Failed to update payment.');
+    }
+  };
+
+  const handleDeletePayment = async (p) => {
+    if (!window.confirm(`Delete payment of ${formatCurrency(p.amount)}? This will revert the member's balance if it's a membership payment.`)) return;
+
+    try {
+      if (p.category === 'Membership' && p.memberId) {
+        const member = members.find((m) => m.id === p.memberId);
+        if (member) {
+          const updatedPaid = Number(member.amountPaid || 0) - Number(p.amount || 0);
+          const financials = buildMembershipFinancials(member.planPrice, updatedPaid);
+
+          await updateDoc(doc(db, 'gyms', currentUser.uid, 'members', member.id), {
+            amountPaid: financials.amountPaid,
+            balanceDue: financials.balanceDue,
+            paymentStatus: financials.paymentStatus
+          });
+        }
+      }
+
+      await deleteDoc(doc(db, 'gyms', currentUser.uid, 'payments', p.id));
+      await fetchPayments();
+      if (p.category === 'Membership') await fetchMembers();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete payment.');
+    }
+  };
+
+  const startEdit = (p) => {
+    setEditingPayment(p);
+    setNewPayment({
+      category: p.category || 'Membership',
+      memberId: p.memberId || '',
+      amount: p.amount.toString(),
+      method: p.method,
+      supplementName: p.supplement_name || '',
+      quantity: (p.quantity || 1).toString()
+    });
+    setMemberSearchTerm(p.member_name === 'Supplement Sale' ? '' : p.member_name);
+    setShowAddModal(true);
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 md:mb-10 gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 md:mb-10 gap-4">
         <div>
-          <h1 className="text-3xl md:text-4xl font-black headline-font uppercase italic tracking-tighter text-white">Payments</h1>
-          <p className="text-sm md:text-base text-zinc-500 font-medium mt-1">Collect partial balances and record supplement revenues</p>
+          <h1 className="text-2xl md:text-4xl font-black headline-font italic uppercase tracking-tighter text-white leading-tight">Payments</h1>
+          <p className="text-xs md:text-base text-zinc-500 font-medium mt-0.5">Collect partial balances and record supplement revenues</p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
           <motion.button
@@ -169,9 +276,7 @@ export default function Payments() {
         </div>
       </div>
 
-      <div className="mb-6 rounded-2xl border border-white/5 bg-surface-container-low/50 px-4 py-4 text-sm text-zinc-400">
-        Payments are locked after confirmation. Renewals must be recorded from the Members page so the new plan, fee, payment, and expiry stay in sync.
-      </div>
+
 
       <div className="hidden md:block bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 shadow-2xl overflow-hidden">
         <div className="overflow-x-auto">
@@ -183,6 +288,7 @@ export default function Payments() {
                 <th className="py-5 px-6 text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none">Details</th>
                 <th className="py-5 px-6 text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none text-center">Method</th>
                 <th className="py-5 px-6 text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none text-right">Amount</th>
+                <th className="py-5 px-6 text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/5">
@@ -211,6 +317,22 @@ export default function Payments() {
                         <span className="bg-tertiary/10 border border-tertiary/20 text-tertiary px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-widest">{p.method}</span>
                       </td>
                       <td className="py-4 px-6 text-sm font-black text-primary text-right">{formatCurrency(p.amount)}</td>
+                      <td className="py-4 px-6 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => startEdit(p)}
+                            className="p-2 text-zinc-500 hover:text-white transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-lg">edit</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeletePayment(p)}
+                            className="p-2 text-zinc-500 hover:text-error transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-lg">delete</span>
+                          </button>
+                        </div>
+                      </td>
                     </motion.tr>
                   ))}
                 </AnimatePresence>
@@ -230,22 +352,39 @@ export default function Payments() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 key={p.id}
-                className="bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 p-5 shadow-lg flex flex-col gap-3"
+                className="bg-surface-container-low/50 backdrop-blur-xl rounded-2xl border border-outline-variant/10 p-4 shadow-lg flex flex-col gap-3.5"
               >
-                <div className="flex justify-between items-start gap-3">
-                  <div>
-                    <h3 className="text-lg font-black text-white">{p.member_name}</h3>
-                    <p className="text-xs text-zinc-400 mt-0.5">{formatDisplayDate(p.date)}</p>
+                <div className="flex justify-between items-start gap-4">
+                  <div className="min-w-0">
+                    <h3 className="text-[17px] font-black text-white truncate">{p.member_name}</h3>
+                    <p className="text-[11px] text-zinc-400 font-bold mt-0.5">{formatDisplayDate(p.date)}</p>
                   </div>
-                  <span className="text-primary font-black text-lg">{formatCurrency(p.amount)}</span>
+                  <div className="text-right shrink-0">
+                    <span className="text-primary font-black text-[18px]">{formatCurrency(p.amount)}</span>
+                    <p className="text-[10px] font-black text-tertiary uppercase tracking-widest mt-0.5">{p.method}</p>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 mt-2 flex-wrap">
-                  <span className="bg-white/10 border border-white/20 text-white px-2 py-1 rounded text-[10px] font-bold tracking-wider">{p.category || 'Membership'}</span>
-                  {p.plan_type && <span className="bg-primary/10 border border-primary/20 text-primary px-2 py-1 rounded text-[10px] font-bold tracking-wider">{p.plan_type}</span>}
-                  {p.supplement_name && <span className="bg-tertiary/10 border border-tertiary/20 text-tertiary px-2 py-1 rounded text-[10px] font-bold tracking-wider">{p.supplement_name}{p.quantity ? ` x${p.quantity}` : ''}</span>}
-                  {p.payment_phase && <span className="bg-white/5 border border-white/10 text-zinc-300 px-2 py-1 rounded text-[10px] font-bold tracking-wider">{p.payment_phase}</span>}
-                  <span className="bg-tertiary/10 border border-tertiary/20 text-tertiary px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest">{p.method}</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="bg-white/5 border border-white/10 text-zinc-300 px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-wider">{p.category || 'Membership'}</span>
+                  {p.plan_type && <span className="bg-primary/10 border border-primary/20 text-primary px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-wider">{p.plan_type}</span>}
+                  {p.supplement_name && <span className="bg-tertiary/10 border border-tertiary/20 text-tertiary px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-wider">{p.supplement_name}{p.quantity ? ` x${p.quantity}` : ''}</span>}
+                  {p.payment_phase && <span className="bg-zinc-800 border border-white/5 text-zinc-400 px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-wider">{p.payment_phase}</span>}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <button
+                    onClick={() => startEdit(p)}
+                    className="p-3 bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-all border border-white/10 flex items-center justify-center gap-2 font-bold text-xs uppercase"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">edit</span> Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeletePayment(p)}
+                    className="p-3 bg-error/10 text-error hover:bg-error hover:text-white rounded-xl transition-all border border-error/20 flex items-center justify-center gap-2 font-bold text-xs uppercase"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">delete</span> Delete
+                  </button>
                 </div>
               </motion.div>
             ))}
@@ -259,7 +398,7 @@ export default function Payments() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 overflow-y-auto p-4 py-6"
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[60] overflow-y-auto p-4 py-6"
           >
             <motion.div
               initial={{ scale: 0.95, y: 20 }}
@@ -271,10 +410,10 @@ export default function Payments() {
                 <button onClick={resetPaymentForm} className="text-zinc-500 hover:text-white p-2 flex"><span className="material-symbols-outlined">close</span></button>
               </div>
 
-              <h2 className="text-xl md:text-2xl font-black headline-font italic mb-2 text-white uppercase">Record Payment</h2>
-              <p className="text-xs text-zinc-500 mb-6 uppercase tracking-widest font-bold">Payments are immutable after confirmation.</p>
+              <h2 className="text-xl md:text-2xl font-black headline-font italic mb-2 text-white uppercase">{editingPayment ? 'Edit Payment' : 'Record Payment'}</h2>
+              <p className="text-xs text-zinc-500 mb-6 uppercase tracking-widest font-bold">{editingPayment ? 'Modify existing payment details.' : 'Record a new revenue entry.'}</p>
 
-              <form onSubmit={handleAddPayment} className="space-y-5">
+              <form onSubmit={editingPayment ? handleUpdatePayment : handleAddPayment} className="space-y-5">
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Payment Type</label>
                   <select
@@ -296,59 +435,83 @@ export default function Payments() {
 
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Select Member</label>
-                  <div className="rounded-xl border border-zinc-700 bg-zinc-900/80 p-3">
+                  <div className="relative">
                     <div className="relative">
                       <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-500">search</span>
                       <input
                         value={memberSearchTerm}
-                        onChange={(e) => setMemberSearchTerm(e.target.value)}
+                        onChange={(e) => {
+                          setMemberSearchTerm(e.target.value);
+                          if (!e.target.value) setNewPayment({ ...newPayment, memberId: '' });
+                        }}
                         placeholder={isMembershipPayment ? 'Search pending members...' : 'Search members...'}
-                        className="w-full rounded-lg border border-zinc-700 bg-zinc-950 py-2.5 pl-10 pr-3 text-sm text-white outline-none transition-all focus:border-primary focus:ring-1 focus:ring-primary"
+                        className="w-full rounded-xl border border-zinc-700 bg-zinc-900 py-3.5 pl-10 pr-3 text-sm text-white outline-none transition-all focus:border-primary focus:ring-1 focus:ring-primary shadow-inner"
                       />
-                    </div>
-
-                    <div className="mt-3 max-h-48 overflow-y-auto rounded-lg border border-white/5 bg-zinc-950/60">
-                      {!isMembershipPayment && (
-                        <button
-                          type="button"
-                          onClick={() => setNewPayment({ ...newPayment, memberId: '' })}
-                          className={`flex w-full items-center justify-between border-b border-white/5 px-3 py-3 text-left text-sm transition-colors ${
-                            newPayment.memberId === '' ? 'bg-primary/10 text-primary' : 'text-zinc-300 hover:bg-white/5'
-                          }`}
-                        >
-                          <span>No member linked</span>
-                          {newPayment.memberId === '' && <span className="material-symbols-outlined text-[18px]">check</span>}
-                        </button>
-                      )}
-
-                      {filteredPickerMembers.length === 0 ? (
-                        <div className="px-3 py-4 text-sm text-zinc-500">No members match your search.</div>
-                      ) : (
-                        filteredPickerMembers.map((m) => (
-                          <button
-                            key={m.id}
+                      {newPayment.memberId && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                          <span className="bg-primary/20 text-primary text-[9px] font-black uppercase px-2 py-0.5 rounded border border-primary/20">Selected</span>
+                          <button 
                             type="button"
-                            onClick={() => setNewPayment({ ...newPayment, memberId: m.id })}
-                            className={`flex w-full items-center justify-between border-b border-white/5 px-3 py-3 text-left transition-colors last:border-b-0 ${
-                              newPayment.memberId === m.id ? 'bg-primary/10 text-primary' : 'text-zinc-300 hover:bg-white/5'
-                            }`}
+                            onClick={() => {
+                              setNewPayment({ ...newPayment, memberId: '' });
+                              setMemberSearchTerm('');
+                            }}
+                            className="text-zinc-500 hover:text-white"
                           >
-                            <div>
-                              <p className="text-sm font-bold">{m.name}</p>
-                              <p className="mt-1 text-xs text-zinc-500">
-                                {isMembershipPayment
-                                  ? `Due ${formatCurrency(m.balanceDue)} | Expires ${formatDisplayDate(m.expiry_date)}`
-                                  : `${m.planType} | Expires ${formatDisplayDate(m.expiry_date)}`}
-                              </p>
-                            </div>
-                            {newPayment.memberId === m.id && <span className="material-symbols-outlined text-[18px]">check</span>}
+                            <span className="material-symbols-outlined text-sm">close</span>
                           </button>
-                        ))
+                        </div>
                       )}
                     </div>
+
+                    {/* Autocomplete Dropdown */}
+                    {memberSearchTerm && !newPayment.memberId && (
+                      <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl backdrop-blur-xl ring-1 ring-white/10">
+                        {!isMembershipPayment && !memberSearchTerm && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNewPayment({ ...newPayment, memberId: '' });
+                              setMemberSearchTerm('');
+                            }}
+                            className="flex w-full items-center justify-between border-b border-white/5 px-4 py-3 text-left text-sm text-zinc-300 hover:bg-white/5"
+                          >
+                            <span>No member linked</span>
+                          </button>
+                        )}
+
+                        {filteredPickerMembers.length === 0 ? (
+                          <div className="px-4 py-4 text-sm text-zinc-500 italic">No members found matching "{memberSearchTerm}"</div>
+                        ) : (
+                          filteredPickerMembers.map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => {
+                                setNewPayment({ ...newPayment, memberId: m.id });
+                                setMemberSearchTerm(m.name);
+                              }}
+                              className="flex w-full flex-col border-b border-white/5 px-4 py-3 text-left transition-colors hover:bg-primary/10 group last:border-b-0"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-bold text-white group-hover:text-primary transition-colors">{m.name}</span>
+                                {isMembershipPayment && <span className="text-[10px] font-black text-primary">₹{Number(m.balanceDue || 0).toLocaleString()} DUE</span>}
+                              </div>
+                              <div className="mt-1 flex items-center justify-between text-[10px] text-zinc-500">
+                                <span>{m.phone}</span>
+                                <span>{m.planType} • Exp: {formatDisplayDate(m.expiry_date)}</span>
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
+                  
                   {isMembershipPayment && (
-                    <p className="mt-1 text-xs text-zinc-500">Only members with pending balance appear here. The list is searchable and scrollable. Use `Renew` on the Members page for a new cycle.</p>
+                    <p className="mt-2 text-[9px] font-bold text-zinc-500 uppercase tracking-widest leading-relaxed">
+                      Only members with pending balance appear here. For a new cycle, use 'Renew' on the Members page.
+                    </p>
                   )}
                 </div>
 
@@ -367,7 +530,18 @@ export default function Payments() {
 
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Amount Given (Rs)</label>
-                  <input type="number" min="0" required value={newPayment.amount} onChange={(e) => setNewPayment({ ...newPayment, amount: e.target.value })} className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all" />
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    required
+                    value={newPayment.amount}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9.]/g, '');
+                      setNewPayment({ ...newPayment, amount: val });
+                    }}
+                    placeholder="0.00"
+                    className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all"
+                  />
                 </div>
 
                 {selectedMember && isMembershipPayment && (
@@ -402,9 +576,9 @@ export default function Payments() {
 
                 {paymentError && <div className="rounded-lg border border-error/20 bg-error/10 px-4 py-3 text-sm text-error">{paymentError}</div>}
 
-                <div className="pt-4 pb-2">
+                <div className="pt-4 pb-20">
                   <button type="submit" className="w-full py-4 bg-primary text-zinc-950 font-black uppercase tracking-widest text-sm rounded-xl hover:bg-primary-dim shadow-[0_0_20px_rgba(253,139,0,0.2)] transition-all">
-                    Confirm Payment
+                    {editingPayment ? 'Update Payment' : 'Confirm Payment'}
                   </button>
                 </div>
               </form>

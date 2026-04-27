@@ -28,7 +28,7 @@ service cloud.firestore {
         allow read, write: if isOwner(gymId) || isSuperAdmin();
       }
       match /payments/{paymentId} {
-        allow read, create: if isOwner(gymId) || isSuperAdmin();
+        allow read, write: if isOwner(gymId) || isSuperAdmin();
       }
       match /expenses/{expenseId} {
         allow read, write: if isOwner(gymId) || isSuperAdmin();

@@ -56,6 +56,20 @@ export default function AdminGyms() {
     );
   });
 
+  const formatLocalDate = (date) => {
+    if (!date) return '';
+    try {
+      const d = date.toDate ? date.toDate() : new Date(date);
+      if (isNaN(d.getTime())) return '';
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch (e) {
+      return '';
+    }
+  };
+
   function openCreateModal() {
     setEditingGym(null);
     setError('');
@@ -69,7 +83,7 @@ export default function AdminGyms() {
       address: '',
       plan: 'trial',
       status: 'active',
-      planStartDate: now.toISOString().split('T')[0],
+      planStartDate: formatLocalDate(now),
       planExpiryDate: ''
     });
     setIsModalOpen(true);
@@ -79,19 +93,6 @@ export default function AdminGyms() {
     setEditingGym(gym);
     setError('');
     
-    // Safely parse existing dates
-    let startDate = '';
-    let expiryDate = '';
-    
-    if (gym.planStartDate) {
-      const d = gym.planStartDate.toDate ? gym.planStartDate.toDate() : new Date(gym.planStartDate);
-      if (!isNaN(d)) startDate = d.toISOString().split('T')[0];
-    }
-    if (gym.planExpiryDate) {
-      const d = gym.planExpiryDate.toDate ? gym.planExpiryDate.toDate() : new Date(gym.planExpiryDate);
-      if (!isNaN(d)) expiryDate = d.toISOString().split('T')[0];
-    }
-
     setFormData({
       uid: gym.id,
       gymName: gym.gymName || gym.name || '',
@@ -101,8 +102,8 @@ export default function AdminGyms() {
       address: gym.address || '',
       plan: gym.plan || 'trial',
       status: gym.status || 'active',
-      planStartDate: startDate,
-      planExpiryDate: expiryDate
+      planStartDate: formatLocalDate(gym.planStartDate),
+      planExpiryDate: formatLocalDate(gym.planExpiryDate)
     });
     setIsModalOpen(true);
   }
@@ -351,7 +352,17 @@ export default function AdminGyms() {
 
                 <div>
                   <label className="block text-xs uppercase text-zinc-400 mb-1">Phone</label>
-                  <input value={formData.phone} onChange={e=>setFormData({...formData, phone: e.target.value})} type="tel" className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white outline-none focus:border-orange-500" />
+                  <input
+                    type="tel"
+                    maxLength="10"
+                    value={formData.phone}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setFormData({ ...formData, phone: val });
+                    }}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white outline-none focus:border-orange-500"
+                    placeholder="10-digit number"
+                  />
                 </div>
 
                 <div className="md:col-span-2">

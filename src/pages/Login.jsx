@@ -38,7 +38,10 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-surface flex flex-col justify-center px-4 py-8 sm:px-6 lg:px-8 text-on-surface">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="font-['Lexend'] font-black text-orange-500 text-4xl sm:text-5xl tracking-widest mb-2 italic">GYMFLOW</div>
+        <div className="flex flex-col items-center gap-4 mb-4">
+          <img src="/logo.png" alt="GymFlow Logo" className="h-32 w-auto drop-shadow-[0_0_20px_rgba(253,139,0,0.3)]" />
+          <div className="font-['Lexend'] font-black text-orange-500 text-4xl sm:text-5xl tracking-widest italic">GYMFLOW</div>
+        </div>
         <h2 className="mt-6 text-center text-xl font-bold tracking-tight text-white uppercase">
           Sign in to Dashboard
         </h2>
