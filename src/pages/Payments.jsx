@@ -4,8 +4,6 @@ import { db } from '../lib/firebase';
 import { buildMembershipFinancials, formatCurrency, formatDisplayDate } from '../lib/formatters';
 import { collection, onSnapshot, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
-import ExportModal from '../components/ExportModal';
-import { exportToExcel, filterByDateRange } from '../lib/exportUtils';
 
 function createInitialPayment() {
   return {
@@ -25,9 +23,7 @@ export default function Payments() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newPayment, setNewPayment] = useState(createInitialPayment());
   const [paymentError, setPaymentError] = useState('');
-  
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [isExportingData, setIsExportingData] = useState(false);
+  const [memberSearchTerm, setMemberSearchTerm] = useState('');
 
   useEffect(() => {
     if (!currentUser) return;
@@ -54,6 +50,7 @@ export default function Payments() {
         mList.push({
           id: memberDoc.id,
           name: data.name,
+          phone: data.phone,
           expiry_date: data.expiry_date,
           planType: data.planType || data.plan || 'Monthly',
           planDuration: Number(data.planDuration || 30),
@@ -75,6 +72,21 @@ export default function Payments() {
   const selectedMember = members.find((member) => member.id === newPayment.memberId);
   const isMembershipPayment = newPayment.category === 'Membership';
   const membersWithPendingBalance = members.filter((member) => Number(member.balanceDue || 0) > 0);
+  const memberPickerSource = isMembershipPayment ? membersWithPendingBalance : members;
+  const filteredPickerMembers = memberPickerSource.filter((member) => {
+    const query = memberSearchTerm.trim().toLowerCase();
+    if (!query) return true;
+
+    return [member.name, member.phone, member.planType, member.expiry_date]
+      .some((value) => String(value || '').toLowerCase().includes(query));
+  });
+
+  const resetPaymentForm = () => {
+    setShowAddModal(false);
+    setNewPayment(createInitialPayment());
+    setPaymentError('');
+    setMemberSearchTerm('');
+  };
 
   const handleAddPayment = async (e) => {
     e.preventDefault();
@@ -131,38 +143,10 @@ export default function Payments() {
         });
       }
 
-      setShowAddModal(false);
-      setNewPayment(createInitialPayment());
-      setPaymentError('');
+      resetPaymentForm();
     } catch (err) {
       console.error(err);
       setPaymentError('Failed to save payment.');
-    }
-  };
-
-  const handleExport = async (startDate, endDate) => {
-    try {
-      setIsExportingData(true);
-      
-      const filteredPayments = filterByDateRange(payments, 'date', startDate, endDate);
-      
-      const formattedData = filteredPayments.map(p => ({
-        Date: new Date(p.date).toLocaleDateString(),
-        'Member Name': p.member_name || '-',
-        Category: p.category || '-',
-        Plan: p.plan_type || '-',
-        'Payment Type': p.payment_phase || '-',
-        'Payment Method': p.method || '-',
-        Amount: p.amount || 0,
-        Notes: p.notes || '-'
-      }));
-
-      exportToExcel(formattedData, 'Payments', `payments-export-${startDate}-to-${endDate}.xlsx`);
-      setIsExportModalOpen(false);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsExportingData(false);
     }
   };
 
@@ -174,14 +158,6 @@ export default function Payments() {
           <p className="text-sm md:text-base text-zinc-500 font-medium mt-1">Collect partial balances and record supplement revenues</p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setIsExportModalOpen(true)}
-            className="w-full md:w-auto bg-surface-container-highest border border-white/10 hover:bg-white/10 text-white px-5 py-3.5 md:py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
-          >
-            <span className="material-symbols-outlined text-sm">download</span> Export
-          </motion.button>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -292,11 +268,7 @@ export default function Payments() {
               className="bg-surface-container-highest p-5 md:p-8 rounded-2xl w-full max-w-md max-h-[calc(100vh-3rem)] overflow-y-auto border border-white/5 shadow-2xl relative"
             >
               <div className="absolute top-0 right-0 p-3">
-                <button onClick={() => {
-                  setShowAddModal(false);
-                  setNewPayment(createInitialPayment());
-                  setPaymentError('');
-                }} className="text-zinc-500 hover:text-white p-2 flex"><span className="material-symbols-outlined">close</span></button>
+                <button onClick={resetPaymentForm} className="text-zinc-500 hover:text-white p-2 flex"><span className="material-symbols-outlined">close</span></button>
               </div>
 
               <h2 className="text-xl md:text-2xl font-black headline-font italic mb-2 text-white uppercase">Record Payment</h2>
@@ -307,11 +279,14 @@ export default function Payments() {
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Payment Type</label>
                   <select
                     value={newPayment.category}
-                    onChange={(e) => setNewPayment({
-                      ...createInitialPayment(),
-                      category: e.target.value,
-                      method: newPayment.method
-                    })}
+                    onChange={(e) => {
+                      setNewPayment({
+                        ...createInitialPayment(),
+                        category: e.target.value,
+                        method: newPayment.method
+                      });
+                      setMemberSearchTerm('');
+                    }}
                     className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all"
                   >
                     <option value="Membership">Membership</option>
@@ -321,26 +296,59 @@ export default function Payments() {
 
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Select Member</label>
-                  <select
-                    required={isMembershipPayment}
-                    value={newPayment.memberId}
-                    onChange={(e) => {
-                      setNewPayment({
-                        ...newPayment,
-                        memberId: e.target.value
-                      });
-                    }}
-                    className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all"
-                  >
-                    <option value="" disabled>{isMembershipPayment ? 'Choose a partial member...' : 'Optional member linkage'}</option>
-                    {(isMembershipPayment ? membersWithPendingBalance : members).map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}{isMembershipPayment ? ` | Due ${formatCurrency(m.balanceDue)}` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="rounded-xl border border-zinc-700 bg-zinc-900/80 p-3">
+                    <div className="relative">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-500">search</span>
+                      <input
+                        value={memberSearchTerm}
+                        onChange={(e) => setMemberSearchTerm(e.target.value)}
+                        placeholder={isMembershipPayment ? 'Search pending members...' : 'Search members...'}
+                        className="w-full rounded-lg border border-zinc-700 bg-zinc-950 py-2.5 pl-10 pr-3 text-sm text-white outline-none transition-all focus:border-primary focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+
+                    <div className="mt-3 max-h-48 overflow-y-auto rounded-lg border border-white/5 bg-zinc-950/60">
+                      {!isMembershipPayment && (
+                        <button
+                          type="button"
+                          onClick={() => setNewPayment({ ...newPayment, memberId: '' })}
+                          className={`flex w-full items-center justify-between border-b border-white/5 px-3 py-3 text-left text-sm transition-colors ${
+                            newPayment.memberId === '' ? 'bg-primary/10 text-primary' : 'text-zinc-300 hover:bg-white/5'
+                          }`}
+                        >
+                          <span>No member linked</span>
+                          {newPayment.memberId === '' && <span className="material-symbols-outlined text-[18px]">check</span>}
+                        </button>
+                      )}
+
+                      {filteredPickerMembers.length === 0 ? (
+                        <div className="px-3 py-4 text-sm text-zinc-500">No members match your search.</div>
+                      ) : (
+                        filteredPickerMembers.map((m) => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setNewPayment({ ...newPayment, memberId: m.id })}
+                            className={`flex w-full items-center justify-between border-b border-white/5 px-3 py-3 text-left transition-colors last:border-b-0 ${
+                              newPayment.memberId === m.id ? 'bg-primary/10 text-primary' : 'text-zinc-300 hover:bg-white/5'
+                            }`}
+                          >
+                            <div>
+                              <p className="text-sm font-bold">{m.name}</p>
+                              <p className="mt-1 text-xs text-zinc-500">
+                                {isMembershipPayment
+                                  ? `Due ${formatCurrency(m.balanceDue)} | Expires ${formatDisplayDate(m.expiry_date)}`
+                                  : `${m.planType} | Expires ${formatDisplayDate(m.expiry_date)}`}
+                              </p>
+                            </div>
+                            {newPayment.memberId === m.id && <span className="material-symbols-outlined text-[18px]">check</span>}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
                   {isMembershipPayment && (
-                    <p className="mt-1 text-xs text-zinc-500">Only members with pending balance appear here. Use `Renew` on the Members page for a new cycle.</p>
+                    <p className="mt-1 text-xs text-zinc-500">Only members with pending balance appear here. The list is searchable and scrollable. Use `Renew` on the Members page for a new cycle.</p>
                   )}
                 </div>
 
@@ -404,14 +412,6 @@ export default function Payments() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <ExportModal 
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        onExport={handleExport}
-        title="Export Payments"
-        isExporting={isExportingData}
-      />
     </motion.div>
   );
 }

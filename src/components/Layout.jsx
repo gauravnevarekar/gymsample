@@ -24,10 +24,16 @@ export default function Layout() {
   useEffect(() => {
     if (!currentUser) return;
 
+    // Listen for custom event to clear badge instantly when viewed
+    const handleRead = () => setNotificationCount(0);
+    window.addEventListener('notificationsRead', handleRead);
+
     const membersRef = collection(db, 'gyms', currentUser.uid, 'members');
     const unsubscribe = onSnapshot(membersRef, (snapshot) => {
       const now = new Date();
       now.setHours(0, 0, 0, 0);
+
+      const readNotifs = JSON.parse(localStorage.getItem(`readNotifs_${currentUser.uid}`) || '[]');
 
       let count = 0;
       snapshot.forEach((memberDoc) => {
@@ -38,14 +44,20 @@ export default function Layout() {
         const diffTime = expiryDate.getTime() - now.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         if (diffDays <= 3) {
-          count += 1;
+          const notifId = `${memberDoc.id}_${data.expiry_date}`;
+          if (!readNotifs.includes(notifId)) {
+            count += 1;
+          }
         }
       });
 
       setNotificationCount(count);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      window.removeEventListener('notificationsRead', handleRead);
+    };
   }, [currentUser]);
 
   const navLinks = [

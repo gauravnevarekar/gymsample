@@ -18,8 +18,10 @@ export default function AdminDashboard() {
       
       console.log("Dashboard Snapshot size:", snapshot.size);
       snapshot.forEach((doc) => {
-        total++;
         const data = doc.data();
+        if (data.status === 'deleted') return;
+
+        total++;
         const isExpired = data.planExpiryDate && (data.planExpiryDate.toDate ? data.planExpiryDate.toDate() : new Date(data.planExpiryDate)) < new Date();
         
         if (data.status === 'active' && !isExpired) active++;
@@ -55,26 +57,26 @@ export default function AdminDashboard() {
         </div>
       )}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 md:gap-6">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 h-32 animate-pulse flex flex-col justify-between">
+            <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 md:p-6 h-32 animate-pulse flex flex-col justify-between">
               <div className="h-4 bg-zinc-800 rounded w-24"></div>
               <div className="h-10 bg-zinc-800 rounded w-16"></div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 md:gap-6">
           {cards.map((c, i) => (
-            <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 flex flex-col justify-between h-32">
-              <div className="text-zinc-400 text-sm font-medium uppercase tracking-wider">{c.label}</div>
-              <div className={`text-4xl font-black ${c.color}`}>{c.value}</div>
+            <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 md:p-6 flex flex-col justify-between h-32">
+              <div className="text-zinc-400 text-xs sm:text-sm font-medium uppercase tracking-wider">{c.label}</div>
+              <div className={`text-3xl sm:text-4xl font-black ${c.color}`}>{c.value}</div>
             </div>
           ))}
         </div>
       )}
       
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8 text-center text-zinc-500">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 md:p-8 text-center text-zinc-500">
         <span className="material-symbols-outlined text-4xl mb-2">insights</span>
         <p>Dashboard statistics updated in real-time.</p>
       </div>

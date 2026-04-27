@@ -315,7 +315,7 @@ export default function Dashboard() {
             <div className="h-full bg-primary" style={{ width: stats.totalMembers ? `${(stats.activeMembers / stats.totalMembers) * 100}%` : '0%' }}></div>
             <div className="h-full bg-error" style={{ width: stats.totalMembers ? `${(stats.expiredMembers / stats.totalMembers) * 100}%` : '0%' }}></div>
           </div>
-          <div className="flex justify-between mt-3 text-[9px] md:text-[11px] font-black uppercase tracking-tighter">
+          <div className="mt-3 flex flex-col gap-2 text-[9px] font-black uppercase tracking-tighter sm:flex-row sm:items-center sm:justify-between md:text-[11px]">
             <div className="flex items-center gap-1.5 text-primary"><div className="w-2 h-2 rounded-full bg-primary" /> {stats.activeMembers} Active</div>
             <div className="flex items-center gap-1.5 text-error"><div className="w-2 h-2 rounded-full bg-error" /> {stats.expiredMembers} Expired (Pending)</div>
           </div>

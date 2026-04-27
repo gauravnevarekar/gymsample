@@ -10,13 +10,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['logo.png'],
       devOptions: {
         enabled: true
       },
       manifest: {
-        name: 'Gym Management',
-        short_name: 'GymPWA',
+        name: 'Gym Flow',
+        short_name: 'Gymflow',
         description: 'Manage Gym Member subscriptions, payments, and expenses',
         theme_color: '#fd8b00',
         background_color: '#0e0e0f',
@@ -24,14 +24,14 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: '/favicon.svg',
+            src: '/logo.png',
             sizes: '192x192',
-            type: 'image/svg+xml'
+            type: 'image/png'
           },
           {
-            src: '/favicon.svg',
+            src: '/logo.png',
             sizes: '512x512',
-            type: 'image/svg+xml'
+            type: 'image/png'
           }
         ]
       }

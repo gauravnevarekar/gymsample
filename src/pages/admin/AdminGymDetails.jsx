@@ -83,9 +83,9 @@ export default function AdminGymDetails() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="col-span-2 bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-1">{gym.name}</h2>
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <h2 className="mb-1 break-words text-2xl font-bold text-white">{gym.gymName || gym.name || 'Unnamed Gym'}</h2>
               <p className="text-zinc-500 text-sm">Created: {new Date(gym.createdAt).toLocaleDateString()}</p>
             </div>
             <span className={`px-3 py-1 rounded text-xs uppercase font-bold tracking-wider ${
@@ -97,14 +97,14 @@ export default function AdminGymDetails() {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="text-[10px] uppercase text-zinc-500 tracking-wider">Owner Name</label>
               <div className="text-white font-medium">{gym.ownerName || '-'}</div>
             </div>
             <div>
               <label className="text-[10px] uppercase text-zinc-500 tracking-wider">Email</label>
-              <div className="text-white font-medium">{gym.ownerEmail || gym.email || '-'}</div>
+              <div className="break-all text-white font-medium">{gym.ownerEmail || gym.email || '-'}</div>
             </div>
             <div>
               <label className="text-[10px] uppercase text-zinc-500 tracking-wider">Phone</label>
@@ -123,7 +123,7 @@ export default function AdminGymDetails() {
             <button 
               disabled={actionLoading}
               onClick={handleResetPassword}
-              className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-2 px-4 rounded text-sm text-left flex items-center gap-3 transition"
+              className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-3 px-4 rounded text-sm text-left flex items-center gap-3 transition"
             >
               <span className="material-symbols-outlined text-lg">lock_reset</span>
               Generate Password Reset Link
@@ -131,7 +131,7 @@ export default function AdminGymDetails() {
             <button 
               disabled={actionLoading}
               onClick={handleDisableToggle}
-              className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-2 px-4 rounded text-sm text-left flex items-center gap-3 transition"
+              className="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-3 px-4 rounded text-sm text-left flex items-center gap-3 transition"
             >
               <span className="material-symbols-outlined text-lg">{gym.status === 'disabled' ? 'play_arrow' : 'block'}</span>
               {gym.status === 'disabled' ? 'Enable Login' : 'Disable Login'}
@@ -139,7 +139,7 @@ export default function AdminGymDetails() {
             <button 
               disabled={actionLoading}
               onClick={handleDelete}
-              className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 py-2 px-4 rounded text-sm text-left flex items-center gap-3 transition"
+              className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-500 py-3 px-4 rounded text-sm text-left flex items-center gap-3 transition"
             >
               <span className="material-symbols-outlined text-lg">delete_forever</span>
               Delete Gym Permanently

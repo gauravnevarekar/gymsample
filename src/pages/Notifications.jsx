@@ -19,6 +19,7 @@ export default function Notifications() {
       now.setHours(0, 0, 0, 0);
 
       const items = [];
+      const newReadNotifs = [];
       snapshot.forEach((memberDoc) => {
         const data = memberDoc.data();
         const expiryDate = new Date(data.expiry_date);
@@ -28,6 +29,9 @@ export default function Notifications() {
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
         if (diffDays <= 3) {
+          const notifId = `${memberDoc.id}_${data.expiry_date}`;
+          newReadNotifs.push(notifId);
+
           items.push({
             id: memberDoc.id,
             memberName: data.name,
@@ -39,6 +43,11 @@ export default function Notifications() {
           });
         }
       });
+
+      if (newReadNotifs.length > 0) {
+        localStorage.setItem(`readNotifs_${currentUser.uid}`, JSON.stringify(newReadNotifs));
+        window.dispatchEvent(new Event('notificationsRead'));
+      }
 
       items.sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
       setNotifications(items);

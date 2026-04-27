@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db, storage } from '../lib/firebase';
@@ -7,15 +7,15 @@ import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'fireb
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { motion, AnimatePresence } from 'framer-motion';
 import Avatar from '../components/Avatar';
-import { compressImage } from '../lib/imageUtils';
-import ExportModal from '../components/ExportModal';
-import { exportToExcel, filterByDateRange } from '../lib/exportUtils';
+import { compressImage, cropImageToFile, getCropLayout, readFileAsDataURL } from '../lib/imageUtils';
 
 const PLAN_OPTIONS = {
   Monthly: { durationDays: 30, label: '30 Days' },
   Quarterly: { durationDays: 90, label: '90 Days' },
   Yearly: { durationDays: 365, label: '365 Days' }
 };
+
+const CROP_FRAME_SIZE = 288;
 
 function createInitialFormData() {
   return {
@@ -28,7 +28,8 @@ function createInitialFormData() {
     initialPaid: '',
     planDuration: PLAN_OPTIONS.Monthly.durationDays,
     joinDate: new Date().toISOString().split('T')[0],
-    photoURL: ''
+    photoURL: '',
+    photoPath: ''
   };
 }
 
@@ -111,7 +112,6 @@ const WhatsAppIcon = ({ member }) => {
     </a>
   );
 };
-
 export default function Members() {
   const { currentUser } = useAuth();
   const { memberSearch, setMemberSearch } = useOutletContext();
@@ -125,15 +125,23 @@ export default function Members() {
   const [formData, setFormData] = useState(createInitialFormData());
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [pendingPhotoSource, setPendingPhotoSource] = useState(null);
+  const [cropImageSize, setCropImageSize] = useState({ width: 0, height: 0 });
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropOffsetX, setCropOffsetX] = useState(0);
+  const [cropOffsetY, setCropOffsetY] = useState(0);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [showPhotoViewer, setShowPhotoViewer] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [renewingMember, setRenewingMember] = useState(null);
   const [selectedHistoryMember, setSelectedHistoryMember] = useState(null);
   const [payments, setPayments] = useState([]);
   const [renewalData, setRenewalData] = useState({ amount: '', method: 'Cash', planType: 'Monthly', planPrice: '' });
   const [renewError, setRenewError] = useState('');
-  
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [isExportingData, setIsExportingData] = useState(false);
+  const galleryInputRef = useRef(null);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -176,6 +184,46 @@ export default function Members() {
     };
   }, [currentUser]);
 
+  useEffect(() => {
+    if (showCamera) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+        .then(stream => {
+          streamRef.current = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        })
+        .catch(err => {
+          console.error("Error accessing camera:", err);
+          setFormError("Could not access camera. Please allow camera permissions.");
+          setShowCamera(false);
+        });
+    } else {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+    }
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [showCamera]);
+
+  const capturePhoto = () => {
+    if (videoRef.current) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg');
+      setShowCamera(false);
+      openCropper(dataUrl);
+    }
+  };
+
   const computedExpiryDate = calculateExpiryDate(formData.joinDate, formData.planDuration);
 
   function closeModal() {
@@ -185,6 +233,14 @@ export default function Members() {
     setFormData(createInitialFormData());
     setPhotoFile(null);
     setPhotoPreview(null);
+    setPendingPhotoSource(null);
+    setCropImageSize({ width: 0, height: 0 });
+    setCropZoom(1);
+    setCropOffsetX(0);
+    setCropOffsetY(0);
+    setShowCropModal(false);
+    setShowPhotoViewer(false);
+    setShowCamera(false);
   }
 
   function closeRenewModal() {
@@ -212,8 +268,13 @@ export default function Members() {
 
     try {
       setFormError('');
+      setIsUploading(true);
 
       const normalizedPhone = normalizePhone(formData.phone);
+      let targetMemberId = editingId;
+      const existingMember = editingId
+        ? members.find((member) => member.id === editingId)
+        : null;
 
       const payload = {
         name: formData.name.trim(),
@@ -230,11 +291,11 @@ export default function Members() {
 
       if (!editingId && formData.initialPaid !== '' && Number(formData.initialPaid) > payload.planPrice) {
         setFormError('Amount received now cannot be more than the plan fee.');
+        setIsUploading(false);
         return;
       }
 
       if (editingId) {
-        const existingMember = members.find((member) => member.id === editingId);
         const financials = buildMembershipFinancials(
           payload.planPrice,
           existingMember?.amountPaid ?? payload.planPrice
@@ -244,7 +305,9 @@ export default function Members() {
           ...payload,
           amountPaid: existingMember?.amountPaid ?? financials.amountPaid,
           balanceDue: financials.balanceDue,
-          paymentStatus: financials.paymentStatus
+          paymentStatus: financials.paymentStatus,
+          photoURL: formData.photoURL || '',
+          photoPath: formData.photoPath || ''
         });
       } else {
         const initialPaid = formData.initialPaid === '' ? payload.planPrice : Number(formData.initialPaid);
@@ -256,6 +319,7 @@ export default function Members() {
           paymentStatus: financials.paymentStatus,
           created_at: new Date().toISOString()
         });
+        targetMemberId = memberRef.id;
 
         if (financials.amountPaid > 0) {
           await addDoc(collection(db, 'gyms', currentUser.uid, 'payments'), {
@@ -273,10 +337,23 @@ export default function Members() {
         }
       }
 
-      // Handle photo upload
-      const targetMemberId = editingId || memberRef.id;
+      if (
+        editingId &&
+        !photoFile &&
+        existingMember?.photoPath &&
+        !formData.photoURL
+      ) {
+        await updateDoc(doc(db, 'gyms', currentUser.uid, 'members', targetMemberId), {
+          photoURL: '',
+          photoPath: ''
+        });
+
+        await deleteObject(ref(storage, existingMember.photoPath)).catch((removeErr) => {
+          console.error('Failed to delete previous profile photo:', removeErr);
+        });
+      }
+
       if (photoFile && targetMemberId) {
-        setIsUploading(true);
         try {
           const compressedFile = await compressImage(photoFile);
           const photoPath = `member-photos/${currentUser.uid}/${targetMemberId}/profile.jpg`;
@@ -305,20 +382,66 @@ export default function Members() {
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setPhotoFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    readFileAsDataURL(file)
+      .then((source) => openCropper(source))
+      .catch((err) => {
+        console.error('Photo preview failed:', err);
+        setFormError('Failed to load selected image.');
+      });
+
+    e.target.value = '';
+  };
+
+  const openCropper = (source) => {
+    const image = new Image();
+    image.onload = () => {
+      setPendingPhotoSource(source);
+      setCropImageSize({ width: image.width, height: image.height });
+      setCropZoom(1);
+      setCropOffsetX(0);
+      setCropOffsetY(0);
+      setShowCropModal(true);
+    };
+    image.onerror = () => {
+      setFormError('Failed to load selected image.');
+    };
+    image.src = source;
+  };
+
+  const handleApplyCrop = async () => {
+    if (!pendingPhotoSource) return;
+
+    try {
+      const croppedFile = await cropImageToFile(pendingPhotoSource, 'profile.jpg', {
+        zoom: cropZoom,
+        offsetX: cropOffsetX,
+        offsetY: cropOffsetY
+      });
+      const croppedPreview = await readFileAsDataURL(croppedFile);
+
+      setPhotoFile(croppedFile);
+      setPhotoPreview(croppedPreview);
+      setFormData((current) => ({
+        ...current,
+        photoURL: croppedPreview
+      }));
+      setShowCropModal(false);
+    } catch (err) {
+      console.error('Photo crop failed:', err);
+      setFormError('Failed to crop selected image.');
     }
   };
 
   const removePhoto = () => {
     setPhotoFile(null);
     setPhotoPreview(null);
-    setFormData(prev => ({ ...prev, photoURL: '' }));
+    setPendingPhotoSource(null);
+    setCropImageSize({ width: 0, height: 0 });
+    setShowCropModal(false);
+    setShowPhotoViewer(false);
+    setFormData(prev => ({ ...prev, photoURL: '', photoPath: '' }));
   };
 
   const openEdit = (member) => {
@@ -337,7 +460,8 @@ export default function Members() {
       initialPaid: '',
       planDuration: Number(member.planDuration || fallbackPlan.durationDays),
       joinDate: member.join_date || new Date().toISOString().split('T')[0],
-      photoURL: member.photoURL || ''
+      photoURL: member.photoURL || '',
+      photoPath: member.photoPath || ''
     });
     setPhotoFile(null);
     setPhotoPreview(member.photoURL || null);
@@ -447,37 +571,6 @@ export default function Members() {
     }
   };
 
-  const handleExport = async (startDate, endDate) => {
-    try {
-      setIsExportingData(true);
-      
-      const filteredMembers = filterByDateRange(members, 'join_date', startDate, endDate);
-      
-      const formattedData = filteredMembers.map(m => {
-        const status = getMembershipStatus(m);
-        return {
-          Name: m.name,
-          Phone: m.phone || '-',
-          Plan: m.planType || m.plan || '-',
-          'Join Date': m.join_date || '-',
-          'Expiry Date': m.expiry_date || '-',
-          Status: status.label,
-          'Total Fee': m.planPrice || 0,
-          'Paid Amount': m.amountPaid || 0,
-          Balance: m.balanceDue || 0
-        };
-      });
-
-      exportToExcel(formattedData, 'Members', `members-export-${startDate}-to-${endDate}.xlsx`);
-      setIsExportModalOpen(false);
-    } catch (err) {
-      console.error(err);
-      // In a real app we might show a toast, but this is fine
-    } finally {
-      setIsExportingData(false);
-    }
-  };
-
   const filteredMembers = members.filter((member) => {
     const query = memberSearch.trim().toLowerCase();
     const status = getMembershipStatus(member);
@@ -501,6 +594,15 @@ export default function Members() {
     ? payments.filter((payment) => payment.memberId === selectedHistoryMember.id)
     : [];
 
+  const cropPreviewLayout = getCropLayout(
+    cropImageSize.width,
+    cropImageSize.height,
+    CROP_FRAME_SIZE,
+    cropZoom,
+    cropOffsetX,
+    cropOffsetY
+  );
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-10 gap-4">
@@ -509,15 +611,6 @@ export default function Members() {
           <p className="text-sm md:text-base text-zinc-500 font-medium mt-1">Manage operations and members</p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setIsExportModalOpen(true)}
-            className="w-full md:w-auto bg-surface-container-highest border border-white/10 hover:bg-white/10 text-white px-5 py-3.5 md:py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
-          >
-            <span className="material-symbols-outlined text-sm">download</span>
-            Export
-          </motion.button>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -730,20 +823,65 @@ export default function Members() {
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="flex flex-col items-center justify-center mb-6">
                   <div className="relative mb-3 group">
-                    <Avatar photoURL={photoPreview} name={formData.name || 'New Member'} size="xl" className="border-4 border-zinc-800" />
-                    <label className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                    <button
+                      type="button"
+                      onClick={() => photoPreview && setShowPhotoViewer(true)}
+                      className="rounded-full"
+                    >
+                      <Avatar photoURL={photoPreview} name={formData.name || 'New Member'} size="xl" className="border-4 border-zinc-800" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => galleryInputRef.current?.click()}
+                      className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    >
                       <span className="material-symbols-outlined text-white text-2xl">photo_camera</span>
-                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoChange} />
-                    </label>
+                    </button>
                     {photoPreview && (
                       <button type="button" onClick={removePhoto} className="absolute top-0 right-0 bg-zinc-900 border border-zinc-700 rounded-full p-1.5 text-error hover:bg-error/20 hover:text-error transition-colors shadow-lg translate-x-1/4 -translate-y-1/4">
                         <span className="material-symbols-outlined text-[14px]">close</span>
                       </button>
                     )}
                   </div>
+                  <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
                   <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Profile Photo (Optional)</p>
+                  <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => galleryInputRef.current?.click()}
+                      className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-zinc-200 transition-colors hover:bg-white/10"
+                    >
+                      Upload From Gallery
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowCamera(true)}
+                      className="rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-primary transition-colors hover:bg-primary/20"
+                    >
+                      Open Camera
+                    </button>
+                  </div>
+                  {photoPreview && (
+                    <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowPhotoViewer(true)}
+                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-zinc-200 transition-colors hover:bg-white/10"
+                      >
+                        View Image
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          openCropper(photoPreview);
+                        }}
+                        className="rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-primary transition-colors hover:bg-primary/20"
+                      >
+                        Crop Image
+                      </button>
+                    </div>
+                  )}
                 </div>
-
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Full Name</label>
                   <input required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all" />
@@ -752,8 +890,8 @@ export default function Members() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Phone Number</label>
-                    <input required value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all" />
-                    <p className="text-xs text-zinc-500 mt-1">Unique. Used for future login and WhatsApp reminders.</p>
+                    <input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full bg-zinc-900 border border-zinc-700 focus:border-primary focus:ring-1 focus:ring-primary rounded-lg px-4 py-3 text-white outline-none transition-all" />
+                    <p className="text-xs text-zinc-500 mt-1">Used for future login and WhatsApp reminders.</p>
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Gender</label>
@@ -820,6 +958,135 @@ export default function Members() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showCropModal && pendingPhotoSource && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 overflow-y-auto p-4 py-6"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="mx-auto w-full max-w-xl rounded-2xl border border-white/5 bg-surface-container-highest p-5 shadow-2xl"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-black uppercase tracking-wider text-white">Crop Photo</h2>
+                  <p className="mt-1 text-sm text-zinc-400">Adjust the image inside the square frame, then save it.</p>
+                </div>
+                <button onClick={() => setShowCropModal(false)} className="text-zinc-500 hover:text-white p-2 flex">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <div className="mt-6 flex justify-center">
+                <div className="relative h-72 w-72 overflow-hidden rounded-3xl border border-white/10 bg-zinc-950">
+                  <img
+                    src={pendingPhotoSource}
+                    alt="Crop preview"
+                    className="absolute select-none"
+                    style={{
+                      width: `${cropPreviewLayout.width}px`,
+                      height: `${cropPreviewLayout.height}px`,
+                      left: `${cropPreviewLayout.left}px`,
+                      top: `${cropPreviewLayout.top}px`
+                    }}
+                  />
+                  <div className="pointer-events-none absolute inset-0 border-[3px] border-primary/60" />
+                </div>
+              </div>
+
+              <div className="mt-6 space-y-4">
+                <div>
+                  <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-zinc-400">Zoom</label>
+                  <input type="range" min="1" max="3" step="0.05" value={cropZoom} onChange={(e) => setCropZoom(Number(e.target.value))} className="w-full accent-primary" />
+                </div>
+                <div>
+                  <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-zinc-400">Left / Right</label>
+                  <input type="range" min="-100" max="100" step="1" value={cropOffsetX} onChange={(e) => setCropOffsetX(Number(e.target.value))} className="w-full accent-primary" />
+                </div>
+                <div>
+                  <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-zinc-400">Up / Down</label>
+                  <input type="range" min="-100" max="100" step="1" value={cropOffsetY} onChange={(e) => setCropOffsetY(Number(e.target.value))} className="w-full accent-primary" />
+                </div>
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button onClick={() => setShowCropModal(false)} className="flex-1 rounded-xl bg-zinc-800 py-3 text-sm font-bold text-white transition-colors hover:bg-zinc-700">
+                  Cancel
+                </button>
+                <button onClick={handleApplyCrop} className="flex-[2] rounded-xl bg-primary py-3 text-sm font-black uppercase tracking-widest text-zinc-950 transition-colors hover:bg-primary-dim">
+                  Save Crop
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showPhotoViewer && photoPreview && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4"
+            onClick={() => setShowPhotoViewer(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              className="relative max-h-[90vh] max-w-3xl overflow-hidden rounded-3xl border border-white/10 bg-zinc-950 p-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button onClick={() => setShowPhotoViewer(false)} className="absolute right-3 top-3 z-10 rounded-full bg-black/60 p-2 text-white">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+              <img src={photoPreview} alt="Member preview" className="max-h-[82vh] w-full rounded-2xl object-contain" />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showCamera && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              className="bg-zinc-950 p-5 rounded-2xl border border-white/10 w-full max-w-lg shadow-2xl relative"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-black uppercase text-white tracking-wider">Take Photo</h3>
+                <button onClick={() => setShowCamera(false)} className="text-zinc-500 hover:text-white transition-colors">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+              <div className="relative rounded-xl overflow-hidden bg-black aspect-video flex items-center justify-center">
+                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+              </div>
+              <div className="mt-6 flex gap-3">
+                <button onClick={() => setShowCamera(false)} className="flex-1 py-3 bg-zinc-800 text-white font-bold rounded-xl hover:bg-zinc-700 transition-colors">Cancel</button>
+                <button onClick={capturePhoto} className="flex-[2] py-3 bg-primary text-zinc-950 font-black uppercase tracking-widest rounded-xl hover:bg-primary-dim transition-colors flex items-center justify-center gap-2">
+                  <span className="material-symbols-outlined text-[20px]">photo_camera</span>
+                  Capture
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -953,13 +1220,6 @@ export default function Members() {
         )}
       </AnimatePresence>
 
-      <ExportModal 
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        onExport={handleExport}
-        title="Export Members"
-        isExporting={isExportingData}
-      />
     </motion.div>
   );
 }

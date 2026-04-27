@@ -25,7 +25,11 @@ export default function Login() {
         navigate('/');
       }
     } catch (err) {
-      setError('Failed to log in: ' + err.message);
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        setError('Incorrect email or password. Please try again.');
+      } else {
+        setError('Login failed. Please check your connection and try again.');
+      }
     } finally {
       setLoading(false);
     }

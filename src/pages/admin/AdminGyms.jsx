@@ -22,6 +22,7 @@ export default function AdminGyms() {
     ownerName: '',
     email: '',
     phone: '',
+    address: '',
     plan: 'trial',
     status: 'active',
     planStartDate: '',
@@ -31,7 +32,11 @@ export default function AdminGyms() {
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'gyms'), (snapshot) => {
       const g = [];
-      snapshot.forEach(doc => g.push({ id: doc.id, ...doc.data() }));
+      snapshot.forEach(doc => {
+        if (doc.data().status !== 'deleted') {
+          g.push({ id: doc.id, ...doc.data() });
+        }
+      });
       setGyms(g);
       setLoading(false);
     }, (err) => {
@@ -55,17 +60,17 @@ export default function AdminGyms() {
     setEditingGym(null);
     setError('');
     const now = new Date();
-    const expiry = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
     setFormData({
       uid: '',
       gymName: '',
       ownerName: '',
       email: '',
       phone: '',
+      address: '',
       plan: 'trial',
       status: 'active',
       planStartDate: now.toISOString().split('T')[0],
-      planExpiryDate: expiry.toISOString().split('T')[0]
+      planExpiryDate: ''
     });
     setIsModalOpen(true);
   }
@@ -93,6 +98,7 @@ export default function AdminGyms() {
       ownerName: gym.ownerName || '',
       email: gym.email || '',
       phone: gym.phone || '',
+      address: gym.address || '',
       plan: gym.plan || 'trial',
       status: gym.status || 'active',
       planStartDate: startDate,
@@ -111,14 +117,18 @@ export default function AdminGyms() {
       if (!targetUid) throw new Error("Firebase Auth UID is required.");
 
       // Prepare dates
-      const startDate = formData.planStartDate ? new Date(formData.planStartDate) : new Date();
-      const expiryDate = formData.planExpiryDate ? new Date(formData.planExpiryDate) : new Date(startDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+      if (!formData.planStartDate) throw new Error("Plan Start Date is required.");
+      if (!formData.planExpiryDate) throw new Error("Plan Expiry Date is required.");
+      
+      const startDate = new Date(formData.planStartDate);
+      const expiryDate = new Date(formData.planExpiryDate);
 
       const gymData = {
         gymName: formData.gymName,
         ownerName: formData.ownerName,
         email: formData.email,
         phone: formData.phone,
+        address: formData.address,
         plan: formData.plan,
         status: formData.status,
         planStartDate: startDate,
@@ -166,7 +176,7 @@ export default function AdminGyms() {
           <p className="text-sm font-medium">{error}</p>
         </div>
       )}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">search</span>
           <input 
@@ -174,15 +184,15 @@ export default function AdminGyms() {
             placeholder="Search gyms..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="bg-zinc-900 border border-zinc-800 rounded-full pl-10 pr-4 py-2 text-sm w-64 focus:border-orange-500 outline-none"
+            className="w-full min-w-0 bg-zinc-900 border border-zinc-800 rounded-full pl-10 pr-4 py-2 text-sm sm:w-64 focus:border-orange-500 outline-none"
           />
         </div>
-        <button onClick={openCreateModal} className="bg-orange-500 text-zinc-950 font-bold px-4 py-2 rounded-full text-sm hover:bg-orange-600 transition">
+        <button onClick={openCreateModal} className="w-full sm:w-auto bg-orange-500 text-zinc-950 font-bold px-4 py-2 rounded-full text-sm hover:bg-orange-600 transition">
           + Configure New Gym
         </button>
       </div>
 
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+      <div className="hidden md:block bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
         <table className="w-full text-sm text-left">
           <thead className="bg-zinc-950/50 text-zinc-400 uppercase text-xs">
             <tr>
@@ -245,9 +255,62 @@ export default function AdminGyms() {
         </table>
       </div>
 
+      <div className="space-y-4 md:hidden">
+        {loading ? (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 px-6 py-12 text-center">
+            <div className="inline-block w-6 h-6 border-2 border-zinc-800 border-t-orange-500 rounded-full animate-spin"></div>
+          </div>
+        ) : filteredGyms.length === 0 ? (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 px-6 py-8 text-center text-zinc-500">No gyms found.</div>
+        ) : (
+          filteredGyms.map((gym) => (
+            <div key={gym.id} className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 shadow-lg">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="break-words text-base font-bold text-white">{gym.gymName || gym.name || 'Unnamed Gym'}</h3>
+                  <p className="mt-1 break-all text-xs text-zinc-500">{gym.email || '-'}</p>
+                  <p className="mt-1 text-sm text-zinc-300">{gym.ownerName || '-'}</p>
+                </div>
+                <span className={`shrink-0 rounded px-2 py-1 text-[10px] uppercase font-bold tracking-wider ${
+                  gym.status === 'active' ? 'bg-green-500/10 text-green-500' :
+                  gym.status === 'disabled' ? 'bg-red-500/10 text-red-500' :
+                  'bg-yellow-500/10 text-yellow-500'
+                }`}>
+                  {gym.status || 'active'}
+                </span>
+              </div>
+
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-zinc-500">Plan</p>
+                  <p className="mt-1 text-sm font-bold uppercase text-white">
+                    {(gym.plan === 'pro' || gym.plan === 'premium') ? 'paid' : (gym.plan || 'trial')}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleDisableToggle(gym.id, gym.status)}
+                  className="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-medium text-zinc-200"
+                >
+                  {gym.status === 'disabled' ? 'Enable' : 'Disable'}
+                </button>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <button onClick={() => openEditModal(gym)} className="rounded-xl bg-blue-500/10 px-3 py-3 text-sm font-medium text-blue-400">
+                  Edit
+                </button>
+                <Link to={`/admin/gyms/${gym.id}`} className="rounded-xl bg-orange-500/10 px-3 py-3 text-center text-sm font-medium text-orange-400">
+                  Details
+                </Link>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-2xl p-6 my-8">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-2xl p-4 sm:p-6 my-8">
             <h2 className="text-xl font-bold mb-4">{editingGym ? 'Edit Gym Profile' : 'Configure New Gym'}</h2>
             
             {!editingGym && (
@@ -291,6 +354,11 @@ export default function AdminGyms() {
                   <input value={formData.phone} onChange={e=>setFormData({...formData, phone: e.target.value})} type="tel" className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white outline-none focus:border-orange-500" />
                 </div>
 
+                <div className="md:col-span-2">
+                  <label className="block text-xs uppercase text-zinc-400 mb-1">Address</label>
+                  <input value={formData.address} onChange={e=>setFormData({...formData, address: e.target.value})} type="text" placeholder="Gym Location / Address" className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white outline-none focus:border-orange-500" />
+                </div>
+
                 <div>
                   <label className="block text-xs uppercase text-zinc-400 mb-1">Plan</label>
                   <select value={formData.plan} onChange={e=>setFormData({...formData, plan: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white outline-none focus:border-orange-500">
@@ -319,9 +387,9 @@ export default function AdminGyms() {
                 </div>
               </div>
 
-              <div className="flex gap-3 justify-end mt-6 pt-4 border-t border-zinc-800">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white">Cancel</button>
-                <button type="submit" disabled={saving} className="px-4 py-2 text-sm bg-orange-500 text-zinc-950 font-bold rounded hover:bg-orange-600 disabled:opacity-50">
+              <div className="mt-6 flex flex-col-reverse gap-3 border-t border-zinc-800 pt-4 sm:flex-row sm:justify-end">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto px-4 py-2 text-sm text-zinc-400 hover:text-white">Cancel</button>
+                <button type="submit" disabled={saving} className="w-full sm:w-auto px-4 py-2 text-sm bg-orange-500 text-zinc-950 font-bold rounded hover:bg-orange-600 disabled:opacity-50">
                   {saving ? 'Saving...' : (editingGym ? 'Save Changes' : 'Configure Gym')}
                 </button>
               </div>

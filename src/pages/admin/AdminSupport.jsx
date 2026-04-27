@@ -105,24 +105,24 @@ export default function AdminSupport() {
         {search.trim().length > 0 && (
           <div className="space-y-4">
             {filteredGyms.map(gym => (
-              <div key={gym.id} className="bg-zinc-950 border border-zinc-800 p-4 rounded-lg flex items-center justify-between">
-                <div>
+              <div key={gym.id} className="bg-zinc-950 border border-zinc-800 p-4 rounded-lg flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
                   <div className="font-bold text-white flex items-center gap-2">
                     {gym.gymName || gym.name || 'Unnamed Gym'}
                     <span className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wider ${
                       gym.status === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'
                     }`}>{gym.status || 'active'}</span>
                   </div>
-                  <div className="text-zinc-500 text-sm mt-1">
+                  <div className="text-zinc-500 text-sm mt-1 break-words">
                     {gym.ownerName ? `${gym.ownerName} • ` : ''}
                     {gym.email || gym.ownerEmail || 'No email provided'}
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2 justify-end">
+                <div className="flex flex-wrap gap-2 sm:justify-end">
                   <button 
                     disabled={loadingId === gym.id + '_reset'}
                     onClick={() => handleResetPassword(gym.id)}
-                    className="bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded text-xs font-medium flex items-center gap-2 disabled:opacity-50"
+                    className="flex flex-1 items-center justify-center gap-2 rounded bg-zinc-800 px-3 py-2 text-xs font-medium text-white disabled:opacity-50 hover:bg-zinc-700 sm:flex-none"
                     title="Send password reset email"
                   >
                     <span className="material-symbols-outlined text-[16px]">mail</span> 
@@ -131,7 +131,7 @@ export default function AdminSupport() {
                   <button 
                     disabled={loadingId === gym.id + '_force'}
                     onClick={() => handleForceReset(gym.id)}
-                    className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 px-3 py-1.5 rounded text-xs font-medium flex items-center gap-2 disabled:opacity-50"
+                    className="flex flex-1 items-center justify-center gap-2 rounded border border-red-500/30 bg-red-500/20 px-3 py-2 text-xs font-medium text-red-400 disabled:opacity-50 hover:bg-red-500/30 sm:flex-none"
                     title="Force reset password instantly (no email needed)"
                   >
                     <span className="material-symbols-outlined text-[16px]">warning</span> 
@@ -140,7 +140,7 @@ export default function AdminSupport() {
                   <button 
                     disabled={loadingId === gym.id}
                     onClick={() => handleDisableToggle(gym.id, gym.status)}
-                    className="bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded text-xs font-medium flex items-center gap-2 disabled:opacity-50"
+                    className="flex flex-1 items-center justify-center gap-2 rounded bg-zinc-800 px-3 py-2 text-xs font-medium text-white disabled:opacity-50 hover:bg-zinc-700 sm:flex-none"
                   >
                     <span className="material-symbols-outlined text-[16px]">{gym.status === 'disabled' ? 'play_arrow' : 'block'}</span> 
                     {loadingId === gym.id ? 'Processing...' : (gym.status === 'disabled' ? 'Enable' : 'Disable')}
